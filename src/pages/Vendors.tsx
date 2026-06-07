@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X, Star, FileText, Calendar, ShieldCheck, CreditCard } from 'lucide-react';
+import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X, Star, FileText, Calendar, ShieldCheck, CreditCard, StickyNote } from 'lucide-react';
 import { getVendors, setVendors, getPurchaseOrders, getVendorRatings } from '../lib/store';
 import type { Vendor } from '../lib/types';
 
@@ -77,6 +77,7 @@ function generateVendorId(existingVendors: Vendor[]): string {
 
 export default function Vendors() {
   const [vendors, setVendorsState] = useState<Vendor[]>(() => { try { return getVendors(); } catch { return []; } });
+  const [purchaseOrders, setPurchaseOrders] = useState(() => { try { return getPurchaseOrders(); } catch { return []; } });
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -84,6 +85,13 @@ export default function Vendors() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deletingVendor, setDeletingVendor] = useState<Vendor | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+
+  // Refresh PO data when component mounts or window gains focus (for cross-page updates)
+  useEffect(() => {
+    const refreshPOs = () => setPurchaseOrders(getPurchaseOrders());
+    window.addEventListener('focus', refreshPOs);
+    return () => window.removeEventListener('focus', refreshPOs);
+  }, []);
 
   const filtered = useMemo(() => {
     return vendors.filter((v) => {
@@ -126,6 +134,12 @@ export default function Vendors() {
       const pos = getPurchaseOrders();
       return pos.filter((po) => po.vendorId === vendorId && ['submitted', 'approved', 'shipped'].includes(po.status)).length;
     } catch { return 0; }
+  };
+
+  const livePOCount = (vendorId: string): number => {
+    return purchaseOrders.filter(
+      (po) => po.vendorId === vendorId && po.status !== 'delivered' && po.status !== 'cancelled'
+    ).length;
   };
 
   const exportCSV = () => {
@@ -263,9 +277,14 @@ export default function Vendors() {
                     {getInitials(v.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white text-base truncate">
-                      <Highlight text={v.name} query={search} />
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-white text-base truncate">
+                        <Highlight text={v.name} query={search} />
+                      </h3>
+                      {livePOCount(v.id) > 0 && (
+                        <span className="badge badge-blue text-xs flex-shrink-0">{livePOCount(v.id)} POs</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       <CategoryBadge category={v.category} />
                       <StatusBadge status={v.status} />
@@ -483,6 +502,13 @@ function VendorDetailPanel({
                   label="Last Order Date"
                   value={poData.lastDate ?? <span className="text-slate-500">No orders yet</span>}
                 />
+                {vendor.notes && (
+                  <DetailRow
+                    icon={<StickyNote size={14} />}
+                    label="Notes"
+                    value={vendor.notes}
+                  />
+                )}
               </div>
 
               {/* Quality metrics */}
@@ -542,6 +568,7 @@ interface FormState {
   leadTime: string;
   status: string;
   location: string;
+  notes: string;
 }
 
 const INITIAL_FORM: FormState = {
@@ -554,6 +581,7 @@ const INITIAL_FORM: FormState = {
   leadTime: '14',
   status: 'active',
   location: '',
+  notes: '',
 };
 
 interface FormErrors {
@@ -588,10 +616,13 @@ function VendorFormModal({
           leadTime: String(initialData.leadTime),
           status: initialData.status === 'under-review' ? 'active' : initialData.status,
           location: initialData.location,
+          notes: initialData.notes || '',
         }
       : { ...INITIAL_FORM }
   );
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const notesCharCount = form.notes.length;
+  const notesMaxChars = 300;
 
   const validate = (): FormErrors => {
     const e: FormErrors = {};
@@ -632,6 +663,7 @@ function VendorFormModal({
       contractEnd: initialData?.contractEnd ?? '2027-12-31',
       paymentTerms: form.paymentTerms,
       leadTime: parseInt(form.leadTime, 10) || 14,
+      notes: form.notes.trim(),
     });
   };
 
@@ -752,6 +784,23 @@ function VendorFormModal({
               placeholder="e.g. Shanghai, China"
               className="w-full px-3 py-2 bg-navy-900 border border-accent-500/15 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent-500/40 relative z-[2]"
             />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.length <= notesMaxChars) {
+                  setForm({ ...form, notes: value });
+                }
+              }}
+              placeholder="Add any notes about this vendor..."
+              rows={3}
+              className="w-full px-3 py-2 bg-navy-900 border border-accent-500/15 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent-500/40 resize-none relative z-[2]"
+            />
+            <p className="text-xs text-slate-500 mt-1 text-right">{notesCharCount} / {notesMaxChars}</p>
           </div>
 
           <div className="flex gap-3 pt-2">

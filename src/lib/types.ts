@@ -15,6 +15,7 @@ export interface Vendor {
   contractEnd: string;
   paymentTerms: string;
   leadTime: number;
+  notes?: string;
 }
 
 export interface PurchaseOrder {
