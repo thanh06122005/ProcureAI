@@ -333,61 +333,111 @@
 
 /* ===== PRINT STYLES ===== */
 @media print {
-  body {
+  html, body {
     background: white !important;
     color: #111 !important;
     font-size: 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Hide everything outside the print area */
-  .print-overlay,
-  .print-controls,
+  /* Hide page chrome explicitly */
+  .no-print,
   .sidebar-mobile,
-  .main-content-mobile,
+  .sidebar-overlay,
+  .print-actions,
   nav,
-  aside,
-  header,
-  footer {
+  aside {
     display: none !important;
   }
 
-  .print-area {
+  /* Reset modal wrapper to be a normal page flow */
+  .print-modal-wrapper {
     position: static !important;
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     width: 100% !important;
-    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  /* Reset modal container */
+  .print-modal {
+    position: static !important;
     max-height: none !important;
     overflow: visible !important;
-    background: white !important;
-    border: none !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: white !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
+    padding: 0 !important;
   }
 
-  .print-area * {
+  /* Reset PO document for print */
+  .po-document {
+    position: static !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    background: white !important;
+    width: 100% !important;
+  }
+
+  .po-document * {
     color: #111 !important;
     background: transparent !important;
-    border-color: #ccc !important;
     box-shadow: none !important;
   }
 
-  .print-area .po-doc-header {
+  .po-document .po-doc-header {
     border-bottom-color: #222 !important;
   }
 
-  .print-area .po-doc-table thead tr {
+  /* Table print styles with color adjustment */
+  .po-document .po-doc-table {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .po-document .po-doc-table thead tr {
     background: #eee !important;
   }
 
-  .print-area .po-doc-table tbody tr:nth-child(even) {
+  .po-document .po-doc-table tbody tr:nth-child(even) {
     background: #f7f7f7 !important;
   }
 
-  .print-area .po-doc-table tbody tr:nth-child(odd) {
+  .po-document .po-doc-table tbody tr:nth-child(odd) {
     background: white !important;
   }
 
-  .print-area .po-doc-totals {
+  .po-document .po-doc-totals {
     border-top-color: #222 !important;
+  }
+
+  .po-document .po-doc-totals .border-t,
+  .po-document .po-doc-totals [class*="border-t"] {
+    border-top-color: #333 !important;
+  }
+
+  /* Ensure borders are visible on table cells */
+  .po-document .po-doc-table th,
+  .po-document .po-doc-table td {
+    border-color: #ccc !important;
+  }
+
+  .po-document .border-b,
+  .po-document [class*="border-b"] {
+    border-color: #ccc !important;
+  }
+
+  .po-document .border-t,
+  .po-document [class*="border-t"] {
+    border-color: #ccc !important;
   }
 }
