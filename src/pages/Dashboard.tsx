@@ -87,11 +87,11 @@ function KPICard({ label, value, icon, color }: { label: string; value: number |
     <div className="kpi-card p-5 relative overflow-hidden">
       <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradientCls}`} />
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-slate-400 font-medium">{label}</span>
+        <span className="kpi-label text-sm text-slate-400 font-medium">{label}</span>
         <span className={color}>{icon}</span>
       </div>
       <div className="flex items-end gap-2">
-        <p className="text-3xl font-bold text-white">{numericValue === 0 ? '0' : animated}</p>
+        <p className="kpi-value text-3xl font-bold text-white">{numericValue === 0 ? '0' : animated}</p>
         {trend && (
           <span className={`text-xs font-semibold flex items-center gap-0.5 pb-1 ${trend.direction === 'up' ? 'text-green-400' : 'text-red-400'}`}>
             {trend.direction === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -109,7 +109,7 @@ function RangeButton({ months, current, onSelect }: { months: RangeOption; curre
   return (
     <button
       onClick={() => onSelect(months)}
-      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+      className={`chart-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
         current === months
           ? 'bg-accent-500 text-white shadow-md shadow-accent-500/25'
           : 'bg-navy-700/60 text-slate-400 hover:text-white hover:bg-navy-700'
@@ -349,7 +349,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
         <span className="text-sm text-slate-500">Last updated: {new Date().toLocaleDateString()}</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpi-grid-mobile grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
           <KPICard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} color={kpi.color} />
         ))}
@@ -365,9 +365,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
               <RangeButton months={12} current={range} onSelect={setRange} />
             </div>
           </div>
-          {chartSection}
+          <div className="chart-wrapper-mobile">
+            {chartSection}
+          </div>
           {monthlyData.showingPartial && (
-            <p className="text-xs text-slate-500 mt-3 italic">Showing available data only</p>
+            <p className="chart-note-mobile text-xs text-slate-500 mt-3 italic">Showing available data only</p>
           )}
         </div>
 
@@ -397,28 +399,47 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
             View all
           </button>
         </div>
-        <table className="w-full text-sm text-left">
-          <thead>
-            <tr className="border-b border-slate-700/50">
-              <th className="px-4 py-3 text-slate-400 font-medium">PO Number</th>
-              <th className="px-4 py-3 text-slate-400 font-medium">Vendor</th>
-              <th className="px-4 py-3 text-slate-400 font-medium hidden sm:table-cell">Date</th>
-              <th className="px-4 py-3 text-slate-400 font-medium text-right">Total</th>
-              <th className="px-4 py-3 text-slate-400 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentPOs.map((po) => (
-              <tr key={po.id} className="border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors">
-                <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
-                <td className="px-4 py-3 text-white">{po.vendorName}</td>
-                <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">{po.date}</td>
-                <td className="px-4 py-3 text-right text-white font-medium">${po.total.toLocaleString()}</td>
-                <td className="px-4 py-3"><StatusBadge status={po.status} /></td>
+        {/* Desktop table */}
+        <div className="hidden md:block">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-slate-700/50">
+                <th className="px-4 py-3 text-slate-400 font-medium">PO Number</th>
+                <th className="px-4 py-3 text-slate-400 font-medium">Vendor</th>
+                <th className="px-4 py-3 text-slate-400 font-medium hidden sm:table-cell">Date</th>
+                <th className="px-4 py-3 text-slate-400 font-medium text-right">Total</th>
+                <th className="px-4 py-3 text-slate-400 font-medium">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentPOs.map((po) => (
+                <tr key={po.id} className="border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors">
+                  <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
+                  <td className="px-4 py-3 text-white">{po.vendorName}</td>
+                  <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">{po.date}</td>
+                  <td className="px-4 py-3 text-right text-white font-medium">${po.total.toLocaleString()}</td>
+                  <td className="px-4 py-3"><StatusBadge status={po.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* Mobile card list */}
+        <div className="block md:hidden">
+          {recentPOs.map((po) => (
+            <div key={po.id} className="po-card-mobile">
+              <div className="flex items-center justify-between mb-1">
+                <span className="po-number">{po.poNumber}</span>
+                <StatusBadge status={po.status} />
+              </div>
+              <p className="po-vendor mb-2">{po.vendorName}</p>
+              <div className="flex items-center justify-between">
+                <span className="po-date">{po.date}</span>
+                <span className="po-total">${po.total.toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

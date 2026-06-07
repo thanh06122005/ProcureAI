@@ -54,8 +54,8 @@ function App() {
   return (
     <div className="min-h-screen bg-navy-900">
       <NavBar current={page} onNavigate={setPage} />
-      <div className="md:ml-[220px] pt-14 md:pt-0">
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="main-content-mobile md:ml-[220px] pt-14 md:pt-0">
+        <main className="page-content-mobile max-w-6xl mx-auto px-4 sm:px-6 py-6">
           {renderPage()}
         </main>
         <footer className="max-w-6xl mx-auto px-4 sm:px-6 py-6 border-t border-accent-500/10 mt-8">

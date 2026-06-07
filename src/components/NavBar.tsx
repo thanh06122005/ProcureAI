@@ -165,19 +165,15 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
         )}
       </div>
 
-      {/* Overlay for mobile */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[150] md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      {/* Overlay for mobile — display-based, never blocks clicks when hidden */}
+      <div
+        className={`sidebar-overlay fixed inset-0 bg-black/50 z-[90] md:hidden ${mobileOpen ? 'sidebar-open' : ''}`}
+        onClick={() => setMobileOpen(false)}
+      />
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-[220px] bg-[#0f2240] border-r border-accent-500/10 z-[100] flex flex-col transition-transform duration-300 ease-in-out ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-[220px] md:translate-x-0'
-        }`}
+        className={`sidebar-mobile fixed left-0 top-0 h-screen w-[220px] bg-[#0f2240] border-r border-accent-500/10 z-[100] flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 ${mobileOpen ? 'sidebar-open' : ''}`}
       >
         {/* Logo + Bell */}
         <div className="flex items-center justify-between px-5 h-16 border-b border-accent-500/10">
