@@ -136,10 +136,29 @@ export default function Vendors() {
     } catch { return 0; }
   };
 
-  const livePOCount = (vendorId: string): number => {
-    return purchaseOrders.filter(
-      (po) => po.vendorId === vendorId && po.status !== 'delivered' && po.status !== 'cancelled'
-    ).length;
+  const livePOCount = (vendor: Vendor): number => {
+    const vendorNameNorm = vendor.name.trim().toLowerCase();
+    return purchaseOrders.filter((po) => {
+      // Prefer matching by vendorId if present and matches
+      if (po.vendorId && po.vendorId === vendor.id) {
+        // matched by ID
+      } else if (po.vendorName && po.vendorName.trim().toLowerCase() === vendorNameNorm) {
+        // matched by vendorName
+      } else {
+        // Try other possible vendor name fields as fallback
+        const poVendor = (po as Record<string, unknown>).vendor;
+        const poCompany = (po as Record<string, unknown>).company;
+        const matchesVendor = typeof poVendor === 'string' && poVendor.trim().toLowerCase() === vendorNameNorm;
+        const matchesCompany = typeof poCompany === 'string' && poCompany.trim().toLowerCase() === vendorNameNorm;
+        if (!matchesVendor && !matchesCompany) {
+          return false;
+        }
+      }
+
+      // Status check: exclude invoiced, delivered, cancelled
+      const statusNorm = po.status.trim().toLowerCase();
+      return statusNorm !== 'invoiced' && statusNorm !== 'delivered' && statusNorm !== 'cancelled';
+    }).length;
   };
 
   const exportCSV = () => {
@@ -281,9 +300,7 @@ export default function Vendors() {
                       <h3 className="font-semibold text-white text-base truncate">
                         <Highlight text={v.name} query={search} />
                       </h3>
-                      {livePOCount(v.id) > 0 && (
-                        <span className="badge badge-blue text-xs flex-shrink-0">{livePOCount(v.id)} POs</span>
-                      )}
+                      {(() => { const count = livePOCount(v); return count > 0 ? <span className="badge badge-blue text-xs flex-shrink-0">{count} POs</span> : null; })()}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       <CategoryBadge category={v.category} />
