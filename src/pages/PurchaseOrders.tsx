@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown, CreditCard as Edit2 } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -39,7 +39,6 @@ function generatePONumber(existingPOs: PurchaseOrder[]): string {
   const currentYear = new Date().getFullYear();
   const prefix = `PO-${currentYear}-`;
 
-  // Find max sequence for current year
   const maxSeq = existingPOs.reduce((max, po) => {
     if (po.poNumber.startsWith(prefix)) {
       const seqStr = po.poNumber.replace(prefix, '');
@@ -61,6 +60,9 @@ export default function PurchaseOrders() {
   });
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null);
   const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
+  // Edit state lives only in React — resets on page refresh
+  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
+  const formSectionRef = useRef<HTMLDivElement>(null);
 
   // Filter and sort state
   const [filterStatus, setFilterStatus] = useState('all');
@@ -83,17 +85,14 @@ export default function PurchaseOrders() {
   const filteredPOs = useMemo(() => {
     let result = [...pos];
 
-    // Apply status filter
     if (filterStatus !== 'all') {
       result = result.filter((po) => po.status === filterStatus);
     }
 
-    // Apply vendor filter
     if (filterVendor !== 'all') {
       result = result.filter((po) => po.vendorId === filterVendor);
     }
 
-    // Apply sorting
     switch (sortBy) {
       case 'date-desc':
         result.sort((a, b) => b.date.localeCompare(a.date));
@@ -104,10 +103,11 @@ export default function PurchaseOrders() {
       case 'total-desc':
         result.sort((a, b) => b.total - a.total);
         break;
-      case 'status':
+      case 'status': {
         const statusOrder = ['submitted', 'approved', 'shipped', 'delivered', 'invoiced', 'overdue', 'cancelled'];
         result.sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status));
         break;
+      }
     }
 
     return result;
@@ -127,6 +127,7 @@ export default function PurchaseOrders() {
     setPosState(updated);
     setPurchaseOrders(updated);
     setDeletingPO(null);
+    if (editingPO?.id === id) setEditingPO(null);
   };
 
   const addPO = (po: PurchaseOrder) => {
@@ -134,6 +135,23 @@ export default function PurchaseOrders() {
     setPosState(updated);
     setPurchaseOrders(updated);
   };
+
+  const updatePO = (po: PurchaseOrder) => {
+    const updated = pos.map((p) => p.id === po.id ? po : p);
+    setPosState(updated);
+    setPurchaseOrders(updated);
+    setEditingPO(null);
+  };
+
+  const startEditing = (po: PurchaseOrder) => {
+    setEditingPO(po);
+    // Scroll to form section
+    requestAnimationFrame(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const cancelEditing = () => setEditingPO(null);
 
   return (
     <div className="space-y-6">
@@ -147,15 +165,22 @@ export default function PurchaseOrders() {
         </div>
       </div>
 
-      {/* Create New Purchase Order Section */}
-      <div className="card p-6">
+      {/* Create / Edit Purchase Order Section */}
+      <div ref={formSectionRef} className="card p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Plus size={18} className="text-accent-500" /> Create New Purchase Order
+          {editingPO ? (
+            <><Edit2 size={18} className="text-accent-500" /> Editing {editingPO.poNumber}</>
+          ) : (
+            <><Plus size={18} className="text-accent-500" /> Create New Purchase Order</>
+          )}
         </h2>
         <POCreateForm
           vendors={vendors}
           existingPOs={pos}
+          editingPO={editingPO}
           onSave={addPO}
+          onUpdate={updatePO}
+          onCancelEdit={cancelEditing}
         />
       </div>
 
@@ -256,7 +281,7 @@ export default function PurchaseOrders() {
                   <th className="px-4 py-3 text-slate-400 font-medium">PO Number</th>
                   <th className="px-4 py-3 text-slate-400 font-medium">Vendor</th>
                   <th className="px-4 py-3 text-slate-400 font-medium hidden md:table-cell">Date Created</th>
-                  <th className="px-4 py-3 text-slate-400 font-medium text-center">Items</th>
+                  <th className="px-4 py-3 text-slate-400 font-medium">Items</th>
                   <th className="px-4 py-3 text-slate-400 font-medium text-right">Grand Total</th>
                   <th className="px-4 py-3 text-slate-400 font-medium">Status</th>
                   <th className="px-4 py-3 text-slate-400 font-medium text-center">Actions</th>
@@ -264,11 +289,16 @@ export default function PurchaseOrders() {
               </thead>
               <tbody>
                 {filteredPOs.map((po) => (
-                  <tr key={po.id} className="border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors">
+                  <tr
+                    key={po.id}
+                    className={`border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors ${editingPO?.id === po.id ? 'bg-accent-500/5 border-accent-500/20' : ''}`}
+                  >
                     <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
                     <td className="px-4 py-3 text-white">{po.vendorName}</td>
                     <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{po.date}</td>
-                    <td className="px-4 py-3 text-center text-slate-300">{po.items.length}</td>
+                    <td className="px-4 py-3 text-slate-300 leading-relaxed">
+                      {po.items.map((item) => item.description).filter(Boolean).join(', ')}
+                    </td>
                     <td className="px-4 py-3 text-right text-white font-medium">${po.total.toLocaleString()}</td>
                     <td className="px-4 py-3"><StatusBadge status={po.status} /></td>
                     <td className="px-4 py-3">
@@ -279,6 +309,13 @@ export default function PurchaseOrders() {
                           aria-label="View order"
                         >
                           <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => startEditing(po)}
+                          className={`p-1.5 rounded transition-colors ${editingPO?.id === po.id ? 'text-accent-400 bg-accent-500/15' : 'text-slate-400 hover:text-accent-400 hover:bg-accent-500/10'}`}
+                          aria-label="Edit order"
+                        >
+                          <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => setDeletingPO(po)}
@@ -314,7 +351,7 @@ export default function PurchaseOrders() {
   );
 }
 
-/* ========== PO CREATE FORM ========== */
+/* ========== PO CREATE / EDIT FORM ========== */
 
 interface LineItem extends POItem {
   id: string;
@@ -323,12 +360,20 @@ interface LineItem extends POItem {
 function POCreateForm({
   vendors,
   existingPOs,
+  editingPO,
   onSave,
+  onUpdate,
+  onCancelEdit,
 }: {
   vendors: Vendor[];
   existingPOs: PurchaseOrder[];
+  editingPO: PurchaseOrder | null;
   onSave: (po: PurchaseOrder) => void;
+  onUpdate: (po: PurchaseOrder) => void;
+  onCancelEdit: () => void;
 }) {
+  const isEditing = editingPO !== null;
+
   const [vendorId, setVendorId] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -336,6 +381,28 @@ function POCreateForm({
   ]);
   const [submitted, setSubmitted] = useState(false);
   const pendingFocusRef = useRef<string | null>(null);
+
+  // Sync form fields when editingPO changes
+  useEffect(() => {
+    if (editingPO) {
+      setVendorId(editingPO.vendorId);
+      setDeliveryDate(editingPO.deliveryDate);
+      setLineItems(
+        editingPO.items.map((item) => ({
+          id: crypto.randomUUID(),
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }))
+      );
+      setSubmitted(false);
+    } else {
+      setVendorId('');
+      setDeliveryDate('');
+      setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+      setSubmitted(false);
+    }
+  }, [editingPO]);
 
   const focusInput = useCallback((itemId: string, field: 'description' | 'quantity' | 'unitPrice') => {
     const el = document.getElementById(`item-${itemId}-${field}`);
@@ -375,14 +442,13 @@ function POCreateForm({
   };
 
   const selectedVendor = vendors.find((v) => v.id === vendorId);
-  const poNumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
+  const newPONumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
+  const displayPONumber = isEditing ? editingPO!.poNumber : newPONumber;
 
-  // Check for invalid quantities (not positive)
   const hasInvalidQuantity = lineItems.some(
     (item) => item.quantity <= 0 || isNaN(item.quantity)
   );
 
-  // Calculations
   const subtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [lineItems]
@@ -405,15 +471,9 @@ function POCreateForm({
     setLineItems(lineItems.filter((item) => item.id !== id));
   };
 
-  const updateItem = (
-    id: string,
-    field: keyof LineItem,
-    value: string | number
-  ) => {
+  const updateItem = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
+      items.map((item) => item.id === id ? { ...item, [field]: value } : item)
     );
   };
 
@@ -421,29 +481,41 @@ function POCreateForm({
     e.preventDefault();
     setSubmitted(true);
 
-    // Validation
     if (!vendorId) return;
     if (!deliveryDate) return;
     if (lineItems.length === 0) return;
     if (hasInvalidQuantity) return;
 
-    const newPO: PurchaseOrder = {
-      id: `po${Date.now()}`,
-      poNumber,
-      vendorId,
-      vendorName: selectedVendor!.name,
-      date: new Date().toISOString().slice(0, 10),
-      deliveryDate,
-      total: grandTotal,
-      status: 'submitted',
-      items: lineItems.map(({ description, quantity, unitPrice }) => ({
-        description,
-        quantity,
-        unitPrice,
-      })),
-    };
+    const items: POItem[] = lineItems.map(({ description, quantity, unitPrice }) => ({
+      description,
+      quantity,
+      unitPrice,
+    }));
 
-    onSave(newPO);
+    if (isEditing && editingPO) {
+      const updatedPO: PurchaseOrder = {
+        ...editingPO,
+        vendorId,
+        vendorName: selectedVendor!.name,
+        deliveryDate,
+        items,
+        total: grandTotal,
+      };
+      onUpdate(updatedPO);
+    } else {
+      const newPO: PurchaseOrder = {
+        id: `po${Date.now()}`,
+        poNumber: newPONumber,
+        vendorId,
+        vendorName: selectedVendor!.name,
+        date: new Date().toISOString().slice(0, 10),
+        deliveryDate,
+        total: grandTotal,
+        status: 'submitted',
+        items,
+      };
+      onSave(newPO);
+    }
 
     // Reset form
     setVendorId('');
@@ -452,7 +524,10 @@ function POCreateForm({
     setSubmitted(false);
   };
 
-  // No vendors case
+  const handleCancelEdit = () => {
+    onCancelEdit();
+  };
+
   if (vendors.length === 0) {
     return (
       <div className="p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-center">
@@ -472,7 +547,7 @@ function POCreateForm({
         <div className="flex-1">
           <label className="text-xs text-slate-400 mb-1 block">PO Number</label>
           <div className="px-3 py-2 bg-navy-700/50 border border-slate-600/30 rounded-lg text-sm font-mono text-slate-300">
-            {poNumber}
+            {displayPONumber}
           </div>
         </div>
         <div className="flex-1">
@@ -638,8 +713,17 @@ function POCreateForm({
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
+      {/* Save / Cancel Buttons */}
+      <div className="flex justify-end gap-3">
+        {isEditing && (
+          <button
+            type="button"
+            onClick={handleCancelEdit}
+            className="btn btn-ghost"
+          >
+            <X size={16} /> Cancel Edit
+          </button>
+        )}
         <button
           type="submit"
           disabled={!canSave}
@@ -647,7 +731,7 @@ function POCreateForm({
             canSave ? 'btn-primary' : 'bg-navy-700 text-slate-500 cursor-not-allowed'
           }`}
         >
-          <FileText size={16} /> Save Purchase Order
+          <FileText size={16} /> {isEditing ? 'Save Changes' : 'Save Purchase Order'}
         </button>
       </div>
       {!canSave && lineItems.length > 0 && hasInvalidQuantity && (
