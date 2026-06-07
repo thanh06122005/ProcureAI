@@ -331,6 +331,15 @@
   }
 }
 
+/* ===== PO DUPLICATE FLASH ===== */
+@keyframes po-row-flash-anim {
+  0%   { background-color: rgba(59, 130, 246, 0.30); }
+  100% { background-color: transparent; }
+}
+.po-row-flash {
+  animation: po-row-flash-anim 1s ease-out forwards;
+}
+
 /* ===== PRINT STYLES ===== */
 @media print {
   body {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown, CreditCard as Edit2 } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown, CreditCard as Edit2, Copy, ShoppingCart, BarChart3, TrendingUp } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -18,7 +18,6 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`badge ${s.cls}`}>{s.label}</span>;
 }
 
-// Status filter options with mapping to actual status values
 const STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
   { value: 'submitted', label: 'Ordered' },
@@ -62,6 +61,7 @@ export default function PurchaseOrders() {
   const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
   // Edit state lives only in React — resets on page refresh
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
   const formSectionRef = useRef<HTMLDivElement>(null);
 
   // Filter and sort state
@@ -143,9 +143,30 @@ export default function PurchaseOrders() {
     setEditingPO(null);
   };
 
+  const duplicatePO = (po: PurchaseOrder) => {
+    const newId = `po${Date.now()}`;
+    const duplicate: PurchaseOrder = {
+      ...po,
+      id: newId,
+      poNumber: generatePONumber([...pos]),
+      date: new Date().toISOString().slice(0, 10),
+      status: 'submitted',
+    };
+    const updated = [...pos, duplicate];
+    setPosState(updated);
+    setPurchaseOrders(updated);
+    // Flash the new row after React renders it
+    setFlashId(newId);
+    setTimeout(() => setFlashId(null), 1100);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`po-row-${newId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  };
+
   const startEditing = (po: PurchaseOrder) => {
     setEditingPO(po);
-    // Scroll to form section
     requestAnimationFrame(() => {
       formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -290,8 +311,15 @@ export default function PurchaseOrders() {
               <tbody>
                 {filteredPOs.map((po) => (
                   <tr
+                    id={`po-row-${po.id}`}
                     key={po.id}
-                    className={`border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors ${editingPO?.id === po.id ? 'bg-accent-500/5 border-accent-500/20' : ''}`}
+                    className={`border-b border-slate-700/30 transition-colors ${
+                      flashId === po.id
+                        ? 'po-row-flash'
+                        : editingPO?.id === po.id
+                        ? 'bg-accent-500/5 border-accent-500/20'
+                        : 'hover:bg-navy-700/30'
+                    }`}
                   >
                     <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
                     <td className="px-4 py-3 text-white">{po.vendorName}</td>
@@ -302,7 +330,7 @@ export default function PurchaseOrders() {
                     <td className="px-4 py-3 text-right text-white font-medium">${po.total.toLocaleString()}</td>
                     <td className="px-4 py-3"><StatusBadge status={po.status} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setViewingPO(po)}
                           className="p-1.5 text-slate-400 hover:text-white hover:bg-navy-700 rounded transition-colors"
@@ -316,6 +344,13 @@ export default function PurchaseOrders() {
                           aria-label="Edit order"
                         >
                           <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => duplicatePO(po)}
+                          className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                          aria-label="Duplicate order"
+                        >
+                          <Copy size={14} />
                         </button>
                         <button
                           onClick={() => setDeletingPO(po)}
@@ -334,6 +369,9 @@ export default function PurchaseOrders() {
         )}
       </div>
 
+      {/* Stats Panel */}
+      <POStatsPanel pos={pos} />
+
       {/* View Modal */}
       {viewingPO && (
         <ViewPOModal po={viewingPO} onClose={() => setViewingPO(null)} />
@@ -347,6 +385,68 @@ export default function PurchaseOrders() {
           onCancel={() => setDeletingPO(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ========== STATS PANEL ========== */
+
+function POStatsPanel({ pos }: { pos: PurchaseOrder[] }) {
+  const mostOrderedVendor = useMemo(() => {
+    if (pos.length === 0) return '—';
+    const counts: Record<string, number> = {};
+    pos.forEach((po) => {
+      counts[po.vendorName] = (counts[po.vendorName] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  }, [pos]);
+
+  const avgPOValue = useMemo(() => {
+    if (pos.length === 0) return 0;
+    return pos.reduce((s, p) => s + p.total, 0) / pos.length;
+  }, [pos]);
+
+  const thisMonthTotal = useMemo(() => {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return pos.filter((p) => p.date.startsWith(prefix)).reduce((s, p) => s + p.total, 0);
+  }, [pos]);
+
+  return (
+    <div className="card p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-700/40">
+        <div className="flex items-center gap-4 py-4 sm:py-0 sm:px-6 sm:first:pl-0">
+          <div className="p-2.5 rounded-lg bg-accent-500/10 flex-shrink-0">
+            <ShoppingCart size={18} className="text-accent-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 mb-0.5">Most Ordered Vendor</p>
+            <p className="text-sm font-semibold text-white truncate">{mostOrderedVendor}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 py-4 sm:py-0 sm:px-6">
+          <div className="p-2.5 rounded-lg bg-green-500/10 flex-shrink-0">
+            <BarChart3 size={18} className="text-green-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 mb-0.5">Average PO Value</p>
+            <p className="text-lg font-bold text-white">
+              ${avgPOValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 py-4 sm:py-0 sm:px-6 sm:last:pr-0">
+          <div className="p-2.5 rounded-lg bg-yellow-500/10 flex-shrink-0">
+            <TrendingUp size={18} className="text-yellow-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500 mb-0.5">This Month's Total Spend</p>
+            <p className="text-lg font-bold text-white">
+              ${thisMonthTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -493,17 +593,16 @@ function POCreateForm({
     }));
 
     if (isEditing && editingPO) {
-      const updatedPO: PurchaseOrder = {
+      onUpdate({
         ...editingPO,
         vendorId,
         vendorName: selectedVendor!.name,
         deliveryDate,
         items,
         total: grandTotal,
-      };
-      onUpdate(updatedPO);
+      });
     } else {
-      const newPO: PurchaseOrder = {
+      onSave({
         id: `po${Date.now()}`,
         poNumber: newPONumber,
         vendorId,
@@ -513,19 +612,13 @@ function POCreateForm({
         total: grandTotal,
         status: 'submitted',
         items,
-      };
-      onSave(newPO);
+      });
     }
 
-    // Reset form
     setVendorId('');
     setDeliveryDate('');
     setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
     setSubmitted(false);
-  };
-
-  const handleCancelEdit = () => {
-    onCancelEdit();
   };
 
   if (vendors.length === 0) {
@@ -718,7 +811,7 @@ function POCreateForm({
         {isEditing && (
           <button
             type="button"
-            onClick={handleCancelEdit}
+            onClick={onCancelEdit}
             className="btn btn-ghost"
           >
             <X size={16} /> Cancel Edit
