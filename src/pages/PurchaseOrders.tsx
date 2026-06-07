@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
@@ -193,6 +193,44 @@ function POCreateForm({
     { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 },
   ]);
   const [submitted, setSubmitted] = useState(false);
+  const pendingFocusRef = useRef<string | null>(null);
+
+  const focusInput = useCallback((itemId: string, field: 'description' | 'quantity' | 'unitPrice') => {
+    const el = document.getElementById(`item-${itemId}-${field}`);
+    if (el) el.focus();
+  }, []);
+
+  useEffect(() => {
+    if (pendingFocusRef.current) {
+      const [id, field] = pendingFocusRef.current.split('|');
+      pendingFocusRef.current = null;
+      requestAnimationFrame(() => focusInput(id, field as 'description'));
+    }
+  }, [lineItems, focusInput]);
+
+  const handleItemKeyDown = (e: React.KeyboardEvent, itemId: string, field: 'description' | 'quantity' | 'unitPrice', index: number) => {
+    if (e.key !== 'Tab') return;
+    const isLastRow = index === lineItems.length - 1;
+
+    if (field === 'description') {
+      e.preventDefault();
+      focusInput(itemId, 'quantity');
+    } else if (field === 'quantity') {
+      e.preventDefault();
+      focusInput(itemId, 'unitPrice');
+    } else if (field === 'unitPrice') {
+      if (!e.shiftKey) {
+        e.preventDefault();
+        if (isLastRow) {
+          const newId = crypto.randomUUID();
+          setLineItems((prev) => [...prev, { id: newId, description: '', quantity: 1, unitPrice: 0 }]);
+          pendingFocusRef.current = `${newId}|description`;
+        } else {
+          focusInput(lineItems[index + 1].id, 'description');
+        }
+      }
+    }
+  };
 
   const selectedVendor = vendors.find((v) => v.id === vendorId);
   const poNumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
@@ -218,6 +256,10 @@ function POCreateForm({
   };
 
   const removeItem = (id: string) => {
+    if (lineItems.length === 1) {
+      setLineItems([{ id: lineItems[0].id, description: '', quantity: 1, unitPrice: 0 }]);
+      return;
+    }
     setLineItems(lineItems.filter((item) => item.id !== id));
   };
 
@@ -354,26 +396,30 @@ function POCreateForm({
               </tr>
             </thead>
             <tbody>
-              {lineItems.map((item) => {
+              {lineItems.map((item, index) => {
                 const lineTotal = item.quantity * item.unitPrice;
                 const isInvalidQty = item.quantity <= 0 || isNaN(item.quantity);
                 return (
                   <tr key={item.id} className="border-t border-slate-700/30">
                     <td className="px-3 py-2">
                       <input
+                        id={`item-${item.id}-description`}
                         type="text"
                         value={item.description}
                         onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                        onKeyDown={(e) => handleItemKeyDown(e, item.id, 'description', index)}
                         placeholder="Item description"
                         className="w-full px-2 py-1.5 bg-navy-800 border border-slate-600/30 rounded text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent-500/40"
                       />
                     </td>
                     <td className="px-3 py-2">
                       <input
+                        id={`item-${item.id}-quantity`}
                         type="number"
                         min="1"
                         value={item.quantity}
                         onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
+                        onKeyDown={(e) => handleItemKeyDown(e, item.id, 'quantity', index)}
                         className={`w-full px-2 py-1.5 bg-navy-800 border rounded text-sm text-white text-right focus:outline-none ${
                           isInvalidQty ? 'border-red-500' : 'border-slate-600/30 focus:border-accent-500/40'
                         }`}
@@ -381,11 +427,13 @@ function POCreateForm({
                     </td>
                     <td className="px-3 py-2">
                       <input
+                        id={`item-${item.id}-unitPrice`}
                         type="number"
                         min="0"
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
+                        onKeyDown={(e) => handleItemKeyDown(e, item.id, 'unitPrice', index)}
                         className="w-full px-2 py-1.5 bg-navy-800 border border-slate-600/30 rounded text-sm text-white text-right focus:outline-none focus:border-accent-500/40"
                       />
                     </td>
@@ -396,13 +444,8 @@ function POCreateForm({
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        disabled={lineItems.length === 1}
-                        className={`p-1 rounded transition-colors ${
-                          lineItems.length === 1
-                            ? 'text-slate-600 cursor-not-allowed'
-                            : 'text-slate-400 hover:text-red-400 hover:bg-red-500/10'
-                        }`}
-                        aria-label="Delete item"
+                        className="p-1 rounded transition-colors text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                        aria-label={lineItems.length === 1 ? 'Clear item' : 'Delete item'}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -412,6 +455,10 @@ function POCreateForm({
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-slate-400">Total Items: {lineItems.length}</span>
         </div>
 
         {lineItems.length === 0 && (
