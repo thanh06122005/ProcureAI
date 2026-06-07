@@ -340,6 +340,7 @@
   }
 
   /* Hide everything outside the print area */
+  .print-overlay,
   .print-controls,
   .sidebar-mobile,
   .main-content-mobile,
