@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X, Star, FileText, Calendar, ShieldCheck, CreditCard, StickyNote } from 'lucide-react';
+import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X, Star, FileText, Calendar, ShieldCheck, CreditCard, StickyNote, Scale, AlertCircle } from 'lucide-react';
 import { getVendors, setVendors, getPurchaseOrders, getVendorRatings } from '../lib/store';
-import type { Vendor } from '../lib/types';
+import type { Vendor, VendorRating } from '../lib/types';
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
@@ -77,6 +77,7 @@ function generateVendorId(existingVendors: Vendor[]): string {
 
 export default function Vendors() {
   const [vendors, setVendorsState] = useState<Vendor[]>(() => { try { return getVendors(); } catch { return []; } });
+  const [vendorRatings] = useState<VendorRating[]>(() => { try { return getVendorRatings(); } catch { return []; } });
   const [purchaseOrders, setPurchaseOrders] = useState(() => { try { return getPurchaseOrders(); } catch { return []; } });
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -85,6 +86,9 @@ export default function Vendors() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deletingVendor, setDeletingVendor] = useState<Vendor | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [compareSelection, setCompareSelection] = useState<Set<string>>(new Set());
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareLimitError, setCompareLimitError] = useState<string | null>(null);
 
   // Refresh PO data when component mounts or window gains focus (for cross-page updates)
   useEffect(() => {
@@ -127,6 +131,35 @@ export default function Vendors() {
     setVendors(updated);
     setDeletingVendor(null);
     setSelectedVendor(null);
+    setCompareSelection((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleCompare = (vendorId: string) => {
+    setCompareLimitError(null);
+    setCompareSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(vendorId)) {
+        next.delete(vendorId);
+      } else if (next.size < 2) {
+        next.add(vendorId);
+      } else {
+        setCompareLimitError('Maximum 2 vendors can be compared at once.');
+      }
+      return next;
+    });
+  };
+
+  const clearCompareSelection = () => {
+    setCompareSelection(new Set());
+    setCompareLimitError(null);
+  };
+
+  const getVendorRating = (vendorId: string): VendorRating | null => {
+    return vendorRatings.find((r) => r.vendorId === vendorId) ?? null;
   };
 
   const openPOCount = (vendorId: string): number => {
@@ -285,9 +318,37 @@ export default function Vendors() {
           {filtered.map((v) => (
             <div
               key={v.id}
-              className="card p-5 cursor-pointer"
+              className="card p-5 cursor-pointer relative group"
               onClick={() => setSelectedVendor(v)}
             >
+              {/* Checkbox for comparison - visible on hover */}
+              <div
+                className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={compareSelection.has(v.id)}
+                    onChange={() => toggleCompare(v.id)}
+                    className="sr-only"
+                  />
+                  <span
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      compareSelection.has(v.id)
+                        ? 'bg-accent-500 border-accent-500'
+                        : 'bg-navy-700 border-slate-500 hover:border-accent-400'
+                    }`}
+                  >
+                    {compareSelection.has(v.id) && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                </label>
+              </div>
+
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div
@@ -333,6 +394,46 @@ export default function Vendors() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Compare limit error message */}
+      {compareLimitError && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
+          <AlertCircle size={16} />
+          {compareLimitError}
+          <button onClick={() => setCompareLimitError(null)} className="ml-2 hover:text-red-200">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Floating Compare button */}
+      {compareSelection.size === 2 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3">
+          <button
+            onClick={clearCompareSelection}
+            className="btn btn-ghost bg-navy-800/90 backdrop-blur-sm"
+          >
+            Clear Selection
+          </button>
+          <button
+            onClick={() => setShowCompareModal(true)}
+            className="btn btn-primary shadow-lg shadow-accent-500/25"
+          >
+            <Scale size={16} /> Compare Vendors
+          </button>
+        </div>
+      )}
+
+      {/* Comparison Modal */}
+      {showCompareModal && compareSelection.size === 2 && (
+        <VendorCompareModal
+          vendorIds={Array.from(compareSelection)}
+          vendors={vendors}
+          getRating={getVendorRating}
+          getPOCount={livePOCount}
+          onClose={() => setShowCompareModal(false)}
+        />
       )}
 
       {/* Add Modal */}
@@ -856,6 +957,181 @@ function DeleteConfirmDialog({
         <div className="flex gap-3 mt-5">
           <button onClick={onCancel} className="btn btn-ghost flex-1 justify-center">Cancel</button>
           <button onClick={onConfirm} className="btn flex-1 justify-center bg-red-500 text-white hover:bg-red-600">Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========== VENDOR COMPARISON MODAL ========== */
+
+const PAYMENT_TERMS_DAYS: Record<string, number> = {
+  'Net 30': 30,
+  'Net 60': 60,
+  'Net 90': 90,
+};
+
+function VendorCompareModal({
+  vendorIds,
+  vendors,
+  getRating,
+  getPOCount,
+  onClose,
+}: {
+  vendorIds: string[];
+  vendors: Vendor[];
+  getRating: (id: string) => VendorRating | null;
+  getPOCount: (v: Vendor) => number;
+  onClose: () => void;
+}) {
+  const [v1, v2] = vendorIds;
+  const vendor1 = vendors.find((v) => v.id === v1)!;
+  const vendor2 = vendors.find((v) => v.id === v2)!;
+
+  const rating1 = getRating(v1);
+  const rating2 = getRating(v2);
+
+  const score1 = rating1?.overall ?? null;
+  const score2 = rating2?.overall ?? null;
+
+  const poCount1 = getPOCount(vendor1);
+  const poCount2 = getPOCount(vendor2);
+
+  const paymentDays1 = PAYMENT_TERMS_DAYS[vendor1.paymentTerms] ?? 0;
+  const paymentDays2 = PAYMENT_TERMS_DAYS[vendor2.paymentTerms] ?? 0;
+
+  // Determine winners
+  const leadTimeWinner = vendor1.leadTime < vendor2.leadTime ? 1 : vendor1.leadTime > vendor2.leadTime ? 2 : 0;
+  const paymentWinner = paymentDays1 > paymentDays2 ? 1 : paymentDays1 < paymentDays2 ? 2 : 0;
+  const scoreWinner = score1 !== null && score2 !== null
+    ? score1 > score2 ? 1 : score1 < score2 ? 2 : 0
+    : score1 !== null ? 1 : score2 !== null ? 2 : 0;
+  const poWinner = poCount1 < poCount2 ? 1 : poCount1 > poCount2 ? 2 : 0;
+
+  const getValueClass = (winner: number, isVendor1: boolean): string => {
+    if (winner === 0) return 'text-white';
+    return winner === (isVendor1 ? 1 : 2) ? 'text-green-400' : 'text-red-400';
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="card p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Scale size={20} className="text-accent-500" /> Vendor Comparison
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white link text-xl">&times;</button>
+        </div>
+
+        {/* Vendor headers */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="text-center">
+            <div className={`w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold text-white ${CATEGORY_BG_COLORS[vendor1.category] || 'bg-slate-500'}`}>
+              {getInitials(vendor1.name)}
+            </div>
+            <h3 className="font-semibold text-white text-sm">{vendor1.name}</h3>
+            <p className="text-xs text-slate-500">{vendor1.id}</p>
+          </div>
+          <div className="text-center">
+            <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Metric</span>
+          </div>
+          <div className="text-center">
+            <div className={`w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold text-white ${CATEGORY_BG_COLORS[vendor2.category] || 'bg-slate-500'}`}>
+              {getInitials(vendor2.name)}
+            </div>
+            <h3 className="font-semibold text-white text-sm">{vendor2.name}</h3>
+            <p className="text-xs text-slate-500">{vendor2.id}</p>
+          </div>
+        </div>
+
+        {/* Comparison rows */}
+        <div className="space-y-4">
+          {/* Lead Time */}
+          <div className="grid grid-cols-3 gap-4 items-center p-3 bg-navy-700/30 rounded-lg">
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(leadTimeWinner, true)}`}>
+                {vendor1.leadTime} days
+              </span>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-400 font-medium">Lead Time</p>
+              <p className="text-xs text-slate-500">lower is better</p>
+            </div>
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(leadTimeWinner, false)}`}>
+                {vendor2.leadTime} days
+              </span>
+            </div>
+          </div>
+
+          {/* Payment Terms */}
+          <div className="grid grid-cols-3 gap-4 items-center p-3 bg-navy-700/30 rounded-lg">
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(paymentWinner, true)}`}>
+                {vendor1.paymentTerms}
+              </span>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-400 font-medium">Payment Terms</p>
+              <p className="text-xs text-slate-500">longer is better</p>
+            </div>
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(paymentWinner, false)}`}>
+                {vendor2.paymentTerms}
+              </span>
+            </div>
+          </div>
+
+          {/* Avg Score */}
+          <div className="grid grid-cols-3 gap-4 items-center p-3 bg-navy-700/30 rounded-lg">
+            <div className="text-center">
+              {score1 !== null ? (
+                <span className={`text-lg font-bold flex items-center justify-center gap-1 ${getValueClass(scoreWinner, true)}`}>
+                  <Star size={14} className="fill-current" /> {score1.toFixed(1)}
+                </span>
+              ) : (
+                <span className="text-sm text-slate-500 italic">Not rated yet</span>
+              )}
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-400 font-medium">Avg Score</p>
+              <p className="text-xs text-slate-500">higher is better</p>
+            </div>
+            <div className="text-center">
+              {score2 !== null ? (
+                <span className={`text-lg font-bold flex items-center justify-center gap-1 ${getValueClass(scoreWinner, false)}`}>
+                  <Star size={14} className="fill-current" /> {score2.toFixed(1)}
+                </span>
+              ) : (
+                <span className="text-sm text-slate-500 italic">Not rated yet</span>
+              )}
+            </div>
+          </div>
+
+          {/* Open POs */}
+          <div className="grid grid-cols-3 gap-4 items-center p-3 bg-navy-700/30 rounded-lg">
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(poWinner, true)}`}>
+                {poCount1}
+              </span>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-400 font-medium">Open POs</p>
+              <p className="text-xs text-slate-500">lower is better</p>
+            </div>
+            <div className="text-center">
+              <span className={`text-lg font-bold ${getValueClass(poWinner, false)}`}>
+                {poCount2}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Close button */}
+        <div className="mt-6 flex justify-center">
+          <button onClick={onClose} className="btn btn-primary">
+            Close
+          </button>
         </div>
       </div>
     </div>
