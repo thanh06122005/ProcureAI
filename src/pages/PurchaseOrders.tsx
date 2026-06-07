@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Eye, CreditCard as Edit2, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -61,11 +61,19 @@ export default function PurchaseOrders() {
   });
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null);
   const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
+  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
 
   // Filter and sort state
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterVendor, setFilterVendor] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc');
+
+  // Clear edit state when component unmounts (navigation)
+  useEffect(() => {
+    return () => {
+      setEditingPO(null);
+    };
+  }, []);
 
   // Refresh data on focus
   useEffect(() => {
@@ -135,6 +143,21 @@ export default function PurchaseOrders() {
     setPurchaseOrders(updated);
   };
 
+  const updatePO = (po: PurchaseOrder) => {
+    const updated = pos.map((p) => (p.id === po.id ? po : p));
+    setPosState(updated);
+    setPurchaseOrders(updated);
+    setEditingPO(null);
+  };
+
+  const startEditPO = (po: PurchaseOrder) => {
+    setEditingPO(po);
+  };
+
+  const cancelEdit = () => {
+    setEditingPO(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -147,15 +170,35 @@ export default function PurchaseOrders() {
         </div>
       </div>
 
-      {/* Create New Purchase Order Section */}
+      {/* Create/Edit Purchase Order Section */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Plus size={18} className="text-accent-500" /> Create New Purchase Order
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            {editingPO ? (
+              <>
+                <Edit2 size={18} className="text-yellow-400" /> Editing {editingPO.poNumber}
+              </>
+            ) : (
+              <>
+                <Plus size={18} className="text-accent-500" /> Create New Purchase Order
+              </>
+            )}
+          </h2>
+          {editingPO && (
+            <button
+              onClick={cancelEdit}
+              className="btn btn-ghost text-sm"
+            >
+              <X size={14} /> Cancel Edit
+            </button>
+          )}
+        </div>
         <POCreateForm
           vendors={vendors}
           existingPOs={pos}
+          editingPO={editingPO}
           onSave={addPO}
+          onUpdate={updatePO}
         />
       </div>
 
@@ -281,6 +324,13 @@ export default function PurchaseOrders() {
                           <Eye size={14} />
                         </button>
                         <button
+                          onClick={() => startEditPO(po)}
+                          className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-500/10 rounded transition-colors"
+                          aria-label="Edit order"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
                           onClick={() => setDeletingPO(po)}
                           className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           aria-label="Delete order"
@@ -323,12 +373,18 @@ interface LineItem extends POItem {
 function POCreateForm({
   vendors,
   existingPOs,
+  editingPO,
   onSave,
+  onUpdate,
 }: {
   vendors: Vendor[];
   existingPOs: PurchaseOrder[];
+  editingPO: PurchaseOrder | null;
   onSave: (po: PurchaseOrder) => void;
+  onUpdate: (po: PurchaseOrder) => void;
 }) {
+  const isEditMode = editingPO !== null;
+
   const [vendorId, setVendorId] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -336,6 +392,29 @@ function POCreateForm({
   ]);
   const [submitted, setSubmitted] = useState(false);
   const pendingFocusRef = useRef<string | null>(null);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (editingPO) {
+      setVendorId(editingPO.vendorId);
+      setDeliveryDate(editingPO.deliveryDate);
+      setLineItems(
+        editingPO.items.map((item) => ({
+          id: crypto.randomUUID(),
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }))
+      );
+      setSubmitted(false);
+    } else {
+      // Reset to empty form when not editing
+      setVendorId('');
+      setDeliveryDate('');
+      setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+      setSubmitted(false);
+    }
+  }, [editingPO]);
 
   const focusInput = useCallback((itemId: string, field: 'description' | 'quantity' | 'unitPrice') => {
     const el = document.getElementById(`item-${itemId}-${field}`);
@@ -375,7 +454,9 @@ function POCreateForm({
   };
 
   const selectedVendor = vendors.find((v) => v.id === vendorId);
-  const poNumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
+  const poNumber = isEditMode && editingPO
+    ? editingPO.poNumber
+    : useMemo(() => generatePONumber(existingPOs), [existingPOs]);
 
   // Check for invalid quantities (not positive)
   const hasInvalidQuantity = lineItems.some(
@@ -427,28 +508,43 @@ function POCreateForm({
     if (lineItems.length === 0) return;
     if (hasInvalidQuantity) return;
 
-    const newPO: PurchaseOrder = {
-      id: `po${Date.now()}`,
-      poNumber,
-      vendorId,
-      vendorName: selectedVendor!.name,
-      date: new Date().toISOString().slice(0, 10),
-      deliveryDate,
-      total: grandTotal,
-      status: 'submitted',
-      items: lineItems.map(({ description, quantity, unitPrice }) => ({
-        description,
-        quantity,
-        unitPrice,
-      })),
-    };
+    const items = lineItems.map(({ description, quantity, unitPrice }) => ({
+      description,
+      quantity,
+      unitPrice,
+    }));
 
-    onSave(newPO);
+    if (isEditMode && editingPO) {
+      // Update existing PO - preserve id, poNumber, date, and status
+      const updatedPO: PurchaseOrder = {
+        ...editingPO,
+        vendorId,
+        vendorName: selectedVendor!.name,
+        deliveryDate,
+        total: grandTotal,
+        items,
+      };
+      onUpdate(updatedPO);
+    } else {
+      // Create new PO
+      const newPO: PurchaseOrder = {
+        id: `po${Date.now()}`,
+        poNumber,
+        vendorId,
+        vendorName: selectedVendor!.name,
+        date: new Date().toISOString().slice(0, 10),
+        deliveryDate,
+        total: grandTotal,
+        status: 'submitted',
+        items,
+      };
+      onSave(newPO);
+      // Reset form only after create
+      setVendorId('');
+      setDeliveryDate('');
+      setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+    }
 
-    // Reset form
-    setVendorId('');
-    setDeliveryDate('');
-    setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
     setSubmitted(false);
   };
 
@@ -639,15 +735,15 @@ function POCreateForm({
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
         <button
           type="submit"
           disabled={!canSave}
           className={`btn flex items-center gap-2 ${
-            canSave ? 'btn-primary' : 'bg-navy-700 text-slate-500 cursor-not-allowed'
+            canSave ? (isEditMode ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'btn-primary') : 'bg-navy-700 text-slate-500 cursor-not-allowed'
           }`}
         >
-          <FileText size={16} /> Save Purchase Order
+          <FileText size={16} /> {isEditMode ? 'Update Purchase Order' : 'Save Purchase Order'}
         </button>
       </div>
       {!canSave && lineItems.length > 0 && hasInvalidQuantity && (
