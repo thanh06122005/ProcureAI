@@ -54,11 +54,12 @@ export function setRiskAlerts(alerts: RiskAlert[]) {
 export function seedData() {
   const vendors: Vendor[] = [
     {
-      id: 'v1',
+      id: 'VND-001',
       name: 'Apex Materials Corp',
       category: 'Raw Materials',
       contact: 'James Chen',
       email: 'j.chen@apexmaterials.com',
+      phone: '+86-21-5555-0100',
       location: 'Shanghai, China',
       rating: 4.2,
       status: 'active',
@@ -67,13 +68,16 @@ export function seedData() {
       costIndex: 78,
       riskLevel: 'medium',
       contractEnd: '2026-12-31',
+      paymentTerms: 'Net 30',
+      leadTime: 21,
     },
     {
-      id: 'v2',
+      id: 'VND-002',
       name: 'NovaTech Electronics',
       category: 'Electronics',
       contact: 'Sarah Mitchell',
       email: 's.mitchell@novatech.io',
+      phone: '+1-408-555-0200',
       location: 'San Jose, USA',
       rating: 4.7,
       status: 'active',
@@ -82,13 +86,16 @@ export function seedData() {
       costIndex: 82,
       riskLevel: 'low',
       contractEnd: '2027-06-30',
+      paymentTerms: 'Net 60',
+      leadTime: 14,
     },
     {
-      id: 'v3',
+      id: 'VND-003',
       name: 'GreenPack Solutions',
-      category: 'Packaging',
+      category: 'Raw Materials',
       contact: 'Aiko Tanaka',
       email: 'a.tanaka@greenpack.jp',
+      phone: '+81-6-5555-0300',
       location: 'Osaka, Japan',
       rating: 3.8,
       status: 'active',
@@ -97,13 +104,16 @@ export function seedData() {
       costIndex: 71,
       riskLevel: 'low',
       contractEnd: '2026-09-15',
+      paymentTerms: 'Net 30',
+      leadTime: 18,
     },
     {
-      id: 'v4',
+      id: 'VND-004',
       name: 'Baltic Steel Ltd',
-      category: 'Metals',
+      category: 'Raw Materials',
       contact: 'Viktor Petrov',
       email: 'v.petrov@balticsteel.eu',
+      phone: '+371-67-555-0400',
       location: 'Riga, Latvia',
       rating: 3.1,
       status: 'under-review',
@@ -112,13 +122,16 @@ export function seedData() {
       costIndex: 68,
       riskLevel: 'high',
       contractEnd: '2026-08-01',
+      paymentTerms: 'Net 90',
+      leadTime: 35,
     },
     {
-      id: 'v5',
+      id: 'VND-005',
       name: 'Sunrise Logistics',
       category: 'Logistics',
       contact: 'Raj Patel',
       email: 'r.patel@sunriselog.in',
+      phone: '+91-22-5555-0500',
       location: 'Mumbai, India',
       rating: 3.5,
       status: 'active',
@@ -127,6 +140,8 @@ export function seedData() {
       costIndex: 65,
       riskLevel: 'medium',
       contractEnd: '2027-03-31',
+      paymentTerms: 'Net 30',
+      leadTime: 10,
     },
   ];
 
@@ -134,7 +149,7 @@ export function seedData() {
     {
       id: 'po1',
       poNumber: 'PO-2026-001',
-      vendorId: 'v1',
+      vendorId: 'VND-001',
       vendorName: 'Apex Materials Corp',
       date: '2026-01-15',
       deliveryDate: '2026-02-28',
@@ -148,7 +163,7 @@ export function seedData() {
     {
       id: 'po2',
       poNumber: 'PO-2026-002',
-      vendorId: 'v2',
+      vendorId: 'VND-002',
       vendorName: 'NovaTech Electronics',
       date: '2026-02-10',
       deliveryDate: '2026-04-05',
@@ -162,7 +177,7 @@ export function seedData() {
     {
       id: 'po3',
       poNumber: 'PO-2026-003',
-      vendorId: 'v3',
+      vendorId: 'VND-003',
       vendorName: 'GreenPack Solutions',
       date: '2026-03-01',
       deliveryDate: '2026-04-15',
@@ -176,7 +191,7 @@ export function seedData() {
     {
       id: 'po4',
       poNumber: 'PO-2026-004',
-      vendorId: 'v4',
+      vendorId: 'VND-004',
       vendorName: 'Baltic Steel Ltd',
       date: '2026-03-20',
       deliveryDate: '2026-05-10',
@@ -190,7 +205,7 @@ export function seedData() {
     {
       id: 'po5',
       poNumber: 'PO-2026-005',
-      vendorId: 'v5',
+      vendorId: 'VND-005',
       vendorName: 'Sunrise Logistics',
       date: '2026-04-05',
       deliveryDate: '2026-06-01',
@@ -204,7 +219,7 @@ export function seedData() {
 
   const ratings: VendorRating[] = [
     {
-      vendorId: 'v1',
+      vendorId: 'VND-001',
       overall: 4.2,
       quality: 4.5,
       delivery: 3.8,
@@ -216,7 +231,7 @@ export function seedData() {
       ],
     },
     {
-      vendorId: 'v2',
+      vendorId: 'VND-002',
       overall: 4.7,
       quality: 4.9,
       delivery: 4.6,
@@ -228,7 +243,7 @@ export function seedData() {
       ],
     },
     {
-      vendorId: 'v3',
+      vendorId: 'VND-003',
       overall: 3.8,
       quality: 4.0,
       delivery: 3.5,
@@ -239,7 +254,7 @@ export function seedData() {
       ],
     },
     {
-      vendorId: 'v4',
+      vendorId: 'VND-004',
       overall: 3.1,
       quality: 3.0,
       delivery: 2.5,
@@ -251,7 +266,7 @@ export function seedData() {
       ],
     },
     {
-      vendorId: 'v5',
+      vendorId: 'VND-005',
       overall: 3.5,
       quality: 3.8,
       delivery: 3.2,
@@ -271,11 +286,11 @@ export function seedData() {
   ];
 
   const riskAlerts: RiskAlert[] = [
-    { id: 'r1', vendorId: 'v4', vendorName: 'Baltic Steel Ltd', type: 'financial', severity: 'high', title: 'Credit rating downgrade', description: "Baltic Steel Ltd credit rating downgraded by Moody's from B1 to B2. Increased risk of payment defaults or supply disruption.", date: '2026-05-20', resolved: false },
-    { id: 'r2', vendorId: 'v1', vendorName: 'Apex Materials Corp', type: 'geopolitical', severity: 'medium', title: 'New export tariffs announced', description: 'Proposed 15% tariff on aluminum exports from China may affect pricing on existing contracts.', date: '2026-05-18', resolved: false },
-    { id: 'r3', vendorId: 'v4', vendorName: 'Baltic Steel Ltd', type: 'supply', severity: 'critical', title: 'Production facility shutdown', description: 'Primary smelting plant temporarily shut down due to regulatory compliance issues. Expected 3-4 week delay on all orders.', date: '2026-05-15', resolved: false },
-    { id: 'r4', vendorId: 'v5', vendorName: 'Sunrise Logistics', type: 'compliance', severity: 'low', title: 'Certification renewal pending', description: 'ISO 9001 certification expires next quarter. Renewal process initiated but not yet completed.', date: '2026-05-10', resolved: false },
-    { id: 'r5', vendorId: 'v2', vendorName: 'NovaTech Electronics', type: 'quality', severity: 'low', title: 'Minor component variance', description: '0.3% variance detected in last PCB batch. Within tolerance but flagged for monitoring.', date: '2026-04-28', resolved: true },
+    { id: 'r1', vendorId: 'VND-004', vendorName: 'Baltic Steel Ltd', type: 'financial', severity: 'high', title: 'Credit rating downgrade', description: "Baltic Steel Ltd credit rating downgraded by Moody's from B1 to B2. Increased risk of payment defaults or supply disruption.", date: '2026-05-20', resolved: false },
+    { id: 'r2', vendorId: 'VND-001', vendorName: 'Apex Materials Corp', type: 'geopolitical', severity: 'medium', title: 'New export tariffs announced', description: 'Proposed 15% tariff on aluminum exports from China may affect pricing on existing contracts.', date: '2026-05-18', resolved: false },
+    { id: 'r3', vendorId: 'VND-004', vendorName: 'Baltic Steel Ltd', type: 'supply', severity: 'critical', title: 'Production facility shutdown', description: 'Primary smelting plant temporarily shut down due to regulatory compliance issues. Expected 3-4 week delay on all orders.', date: '2026-05-15', resolved: false },
+    { id: 'r4', vendorId: 'VND-005', vendorName: 'Sunrise Logistics', type: 'compliance', severity: 'low', title: 'Certification renewal pending', description: 'ISO 9001 certification expires next quarter. Renewal process initiated but not yet completed.', date: '2026-05-10', resolved: false },
+    { id: 'r5', vendorId: 'VND-002', vendorName: 'NovaTech Electronics', type: 'quality', severity: 'low', title: 'Minor component variance', description: '0.3% variance detected in last PCB batch. Within tolerance but flagged for monitoring.', date: '2026-04-28', resolved: true },
   ];
 
   setVendors(vendors);

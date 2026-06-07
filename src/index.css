@@ -102,6 +102,16 @@
     color: #60a5fa;
   }
 
+  .badge-purple {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+  }
+
+  .badge-orange {
+    background-color: rgba(249, 115, 22, 0.15);
+    color: #fb923c;
+  }
+
   .link {
     position: relative;
     z-index: 2;

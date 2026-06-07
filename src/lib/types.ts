@@ -4,6 +4,7 @@ export interface Vendor {
   category: string;
   contact: string;
   email: string;
+  phone: string;
   location: string;
   rating: number;
   status: 'active' | 'inactive' | 'under-review';
@@ -12,6 +13,8 @@ export interface Vendor {
   costIndex: number;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   contractEnd: string;
+  paymentTerms: string;
+  leadTime: number;
 }
 
 export interface PurchaseOrder {
