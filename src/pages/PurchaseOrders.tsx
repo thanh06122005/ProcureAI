@@ -525,7 +525,21 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
   const vendor = getVendors().find((v) => v.id === po.vendorId) ?? null;
   const paymentTerms = vendor?.paymentTerms ?? 'Net 30';
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const overlay = document.querySelector<HTMLElement>('.print-overlay');
+    const area = document.querySelector<HTMLElement>('.print-area');
+    const origOverlay = overlay ? overlay.style.cssText : '';
+    const origArea = area ? area.style.cssText : '';
+    if (overlay) {
+      overlay.style.cssText = 'position:static;background:none;backdrop-filter:none;display:block;padding:0;margin:0;width:100%;';
+    }
+    if (area) {
+      area.style.cssText = 'position:static;width:100%;max-width:100%;max-height:none;overflow:visible;background:white;border:none;box-shadow:none;padding:0;margin:0;';
+    }
+    window.print();
+    if (overlay) overlay.style.cssText = origOverlay;
+    if (area) area.style.cssText = origArea;
+  };
 
   return (
     <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
