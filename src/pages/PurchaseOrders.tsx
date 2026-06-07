@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -515,86 +515,130 @@ function POCreateForm({
   );
 }
 
-/* ========== VIEW MODAL ========== */
+/* ========== VIEW MODAL (PRINTABLE PO DOCUMENT) ========== */
 
 function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }) {
   const subtotal = po.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const tax = subtotal * 0.1;
   const grandTotal = subtotal + tax;
 
+  const vendor = getVendors().find((v) => v.id === po.vendorId) ?? null;
+  const paymentTerms = vendor?.paymentTerms ?? 'Net 30';
+
+  const handlePrint = () => window.print();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="card p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
-        <div className="flex items-center justify-between mb-4">
+    <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="print-area card p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+        {/* Print Controls - hidden during print */}
+        <div className="print-controls flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Eye size={18} className="text-accent-500" /> {po.poNumber}
+            <Eye size={18} className="text-accent-500" /> PO Document
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">&times;</button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div>
-            <p className="text-xs text-slate-400">Vendor</p>
-            <p className="text-sm text-white font-medium">{po.vendorName}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Date Created</p>
-            <p className="text-sm text-white">{po.date}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Delivery Date</p>
-            <p className="text-sm text-white">{po.deliveryDate || '-'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400">Status</p>
-            <StatusBadge status={po.status} />
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrint} className="btn btn-ghost flex items-center gap-1.5">
+              <Printer size={14} /> Print
+            </button>
+            <button onClick={onClose} className="btn btn-ghost p-2" aria-label="Close">
+              <X size={16} />
+            </button>
           </div>
         </div>
 
-        <div className="border border-slate-700/40 rounded-lg overflow-hidden mb-4">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-navy-700/30">
-                <th className="px-3 py-2 text-left text-slate-400 font-medium">Item</th>
-                <th className="px-3 py-2 text-right text-slate-400 font-medium">Qty</th>
-                <th className="px-3 py-2 text-right text-slate-400 font-medium">Unit Price</th>
-                <th className="px-3 py-2 text-right text-slate-400 font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {po.items.map((item, i) => (
-                <tr key={i} className="border-t border-slate-700/30">
-                  <td className="px-3 py-2 text-slate-300">{item.description}</td>
-                  <td className="px-3 py-2 text-right text-white">{item.quantity}</td>
-                  <td className="px-3 py-2 text-right text-white">${item.unitPrice.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right text-white font-medium">
-                    ${(item.quantity * item.unitPrice).toFixed(2)}
-                  </td>
+        {/* === PO DOCUMENT === */}
+        <div className="bg-white text-gray-900 rounded-lg p-8 print:p-0 print:rounded-none">
+          {/* Header */}
+          <div className="po-doc-header flex items-start justify-between pb-4 border-b-2 border-gray-800 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                <span className="text-3xl">🚛</span> ProcureAI Procurement
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Supply Chain Management</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Purchase Order</p>
+              <p className="text-xl font-bold font-mono">{po.poNumber}</p>
+              <p className="text-sm text-gray-600 mt-1">Date: {po.date}</p>
+            </div>
+          </div>
+
+          {/* Vendor Details */}
+          <div className="mb-6">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Vendor</h2>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="font-semibold text-base">{po.vendorName}</p>
+              {vendor ? (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
+                  {vendor.contact && <p><span className="text-gray-500">Contact:</span> {vendor.contact}</p>}
+                  {vendor.email && <p><span className="text-gray-500">Email:</span> {vendor.email}</p>}
+                  {vendor.phone && <p><span className="text-gray-500">Phone:</span> {vendor.phone}</p>}
+                  {vendor.location && <p><span className="text-gray-500">Location:</span> {vendor.location}</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1 italic">Vendor details unavailable</p>
+              )}
+            </div>
+          </div>
+
+          {/* Delivery info */}
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Delivery Date</h2>
+              <p className="text-sm font-medium">{po.deliveryDate || 'Not specified'}</p>
+            </div>
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Status</h2>
+              <p className="text-sm font-medium capitalize">{po.status.replace('-', ' ')}</p>
+            </div>
+          </div>
+
+          {/* Line Items Table */}
+          <div className="mb-6">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Line Items</h2>
+            <table className="po-doc-table w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-4 py-2.5 text-left font-semibold border-b border-gray-300">Item</th>
+                  <th className="px-4 py-2.5 text-right font-semibold border-b border-gray-300 w-20">Qty</th>
+                  <th className="px-4 py-2.5 text-right font-semibold border-b border-gray-300 w-28">Unit Price</th>
+                  <th className="px-4 py-2.5 text-right font-semibold border-b border-gray-300 w-28">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {po.items.map((item, i) => (
+                  <tr key={i} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-4 py-2.5 border-b border-gray-200">{item.description}</td>
+                    <td className="px-4 py-2.5 text-right border-b border-gray-200">{item.quantity}</td>
+                    <td className="px-4 py-2.5 text-right border-b border-gray-200">${item.unitPrice.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right border-b border-gray-200 font-medium">${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        <div className="bg-navy-700/30 rounded-lg p-4 mb-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Subtotal</span>
-              <span className="text-white">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Tax (10%)</span>
-              <span className="text-white">${tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between text-sm pt-2 border-t border-slate-600/30">
-              <span className="text-white font-medium">Grand Total</span>
-              <span className="text-lg font-bold text-accent-400">${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          {/* Totals */}
+          <div className="po-doc-totals flex justify-end mb-8">
+            <div className="w-64 space-y-1.5 pt-3 border-t-2 border-gray-800">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Subtotal</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Tax (10%)</span>
+                <span>${tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-300">
+                <span>Grand Total</span>
+                <span>${grandTotal.toFixed(2)}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex justify-end">
-          <button onClick={onClose} className="btn btn-primary">Close</button>
+          {/* Footer */}
+          <div className="pt-4 border-t border-gray-300 text-xs text-gray-500">
+            <p>Terms: {paymentTerms}. This PO is system-generated.</p>
+          </div>
         </div>
       </div>
     </div>

@@ -330,3 +330,64 @@
     height: 18px;
   }
 }
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 12px !important;
+  }
+
+  /* Hide everything outside the print area */
+  .print-overlay,
+  .print-controls,
+  .sidebar-mobile,
+  .main-content-mobile,
+  nav,
+  aside,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  .print-area {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-area * {
+    color: #111 !important;
+    background: transparent !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+
+  .print-area .po-doc-header {
+    border-bottom-color: #222 !important;
+  }
+
+  .print-area .po-doc-table thead tr {
+    background: #eee !important;
+  }
+
+  .print-area .po-doc-table tbody tr:nth-child(even) {
+    background: #f7f7f7 !important;
+  }
+
+  .print-area .po-doc-table tbody tr:nth-child(odd) {
+    background: white !important;
+  }
+
+  .print-area .po-doc-totals {
+    border-top-color: #222 !important;
+  }
+}
