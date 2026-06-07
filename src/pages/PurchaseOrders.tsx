@@ -518,11 +518,6 @@ function POCreateForm({
 /* ========== VIEW MODAL (PRINTABLE PO DOCUMENT) ========== */
 
 function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }) {
-  useEffect(() => {
-    document.body.classList.add('printing-active');
-    return () => document.body.classList.remove('printing-active');
-  }, []);
-
   const subtotal = po.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const tax = subtotal * 0.1;
   const grandTotal = subtotal + tax;

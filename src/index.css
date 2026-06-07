@@ -333,24 +333,22 @@
 
 /* ===== PRINT STYLES ===== */
 @media print {
-  nav,
-  footer,
-  aside,
-  .sidebar-mobile,
-  .main-content-mobile,
-  .print-controls {
-    display: none !important;
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 12px !important;
   }
 
-  .print-overlay {
-    position: static !important;
-    display: block !important;
-    background: none !important;
-    backdrop-filter: none !important;
-    height: auto !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
+  /* Hide everything outside the print area */
+  .print-overlay,
+  .print-controls,
+  .sidebar-mobile,
+  .main-content-mobile,
+  nav,
+  aside,
+  header,
+  footer {
+    display: none !important;
   }
 
   .print-area {
@@ -368,6 +366,8 @@
 
   .print-area * {
     color: #111 !important;
+    background: transparent !important;
+    border-color: #ccc !important;
     box-shadow: none !important;
   }
 
