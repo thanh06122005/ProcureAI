@@ -340,7 +340,6 @@
   }
 
   /* Hide everything outside the print area */
-  .print-overlay,
   .print-controls,
   .sidebar-mobile,
   .main-content-mobile,
@@ -349,6 +348,19 @@
   header,
   footer {
     display: none !important;
+  }
+
+  .print-overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .print-area {
