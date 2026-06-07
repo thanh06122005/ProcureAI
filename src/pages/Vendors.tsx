@@ -1,7 +1,24 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2 } from 'lucide-react';
+import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X } from 'lucide-react';
 import { getVendors, setVendors, getPurchaseOrders } from '../lib/store';
 import type { Vendor } from '../lib/types';
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-yellow-400/80 text-navy-900 rounded-sm px-0.5">{part}</mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
 
 const CATEGORIES = ['Electronics', 'Logistics', 'Raw Materials', 'Office Supplies', 'IT Services'] as const;
 const PAYMENT_TERMS = ['Net 30', 'Net 60', 'Net 90'] as const;
@@ -51,7 +68,12 @@ export default function Vendors() {
 
   const filtered = useMemo(() => {
     return vendors.filter((v) => {
-      const matchSearch = v.name.toLowerCase().includes(search.toLowerCase()) || v.contact.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchSearch = !q ||
+        v.name.toLowerCase().includes(q) ||
+        v.contact.toLowerCase().includes(q) ||
+        v.email.toLowerCase().includes(q) ||
+        v.category.toLowerCase().includes(q);
       const matchCat = filterCategory === 'all' || v.category === filterCategory;
       const matchStatus = filterStatus === 'all' || v.status === filterStatus;
       return matchSearch && matchCat && matchStatus;
@@ -107,11 +129,20 @@ export default function Vendors() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search vendors by name or contact..."
+            placeholder="Search vendors by name, contact, email, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-navy-800 border border-accent-500/15 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent-500/40 relative z-[2]"
+            className="w-full pl-9 pr-9 py-2.5 bg-navy-800 border border-accent-500/15 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-accent-500/40 relative z-[2]"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors z-[3]"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         {/* Left filter panel */}
@@ -138,12 +169,29 @@ export default function Vendors() {
         </div>
       </div>
 
+      {/* Result count */}
+      <p className="text-sm text-slate-400">
+        {search.trim()
+          ? <>{filtered.length} of {vendors.length} vendors</>
+          : <>{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</>
+        }
+      </p>
+
       {/* Vendor grid */}
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <Building2 size={40} className="mx-auto mb-3 text-slate-600" />
-          <p className="text-slate-400 text-lg">No vendors found</p>
-          <p className="text-slate-500 text-sm mt-1">Try adjusting your search or filters</p>
+          {search.trim() ? (
+            <>
+              <p className="text-slate-400 text-lg">No vendors match &ldquo;{search}&rdquo;</p>
+              <p className="text-slate-500 text-sm mt-1">Try a different search term or clear the search</p>
+            </>
+          ) : (
+            <>
+              <p className="text-slate-400 text-lg">No vendors found</p>
+              <p className="text-slate-500 text-sm mt-1">Try adjusting your search or filters</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -151,7 +199,9 @@ export default function Vendors() {
             <div key={v.id} className="card p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white text-base truncate">{v.name}</h3>
+                  <h3 className="font-semibold text-white text-base truncate">
+                    <Highlight text={v.name} query={search} />
+                  </h3>
                   <div className="flex items-center gap-2 mt-1.5">
                     <CategoryBadge category={v.category} />
                     <StatusBadge status={v.status} />
@@ -161,8 +211,8 @@ export default function Vendors() {
               </div>
 
               <div className="space-y-2 text-sm text-slate-300 mb-4">
-                <div className="flex items-center gap-2"><Phone size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate">{v.contact}</span></div>
-                <div className="flex items-center gap-2"><Mail size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate">{v.email}</span></div>
+                <div className="flex items-center gap-2"><Phone size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate"><Highlight text={v.contact} query={search} /></span></div>
+                <div className="flex items-center gap-2"><Mail size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate"><Highlight text={v.email} query={search} /></span></div>
                 {v.phone && <div className="flex items-center gap-2"><Phone size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate">{v.phone}</span></div>}
                 <div className="flex items-center gap-2"><MapPin size={14} className="text-slate-500 flex-shrink-0" /> <span className="truncate">{v.location}</span></div>
                 <div className="flex items-center gap-2"><Clock size={14} className="text-slate-500 flex-shrink-0" /> {v.leadTime} days lead time</div>
