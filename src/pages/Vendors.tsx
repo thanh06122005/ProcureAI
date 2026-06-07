@@ -96,7 +96,6 @@ export default function Vendors() {
     setVendorsState(updated);
     setVendors(updated);
     setEditingVendor(null);
-    setSelectedVendor(v);
   };
 
   const deleteVendor = (id: string) => {
@@ -231,10 +230,10 @@ export default function Vendors() {
               <div className="flex items-center justify-between pt-3 border-t border-slate-700/40">
                 <span className="text-xs text-slate-500">{v.paymentTerms}</span>
                 <div className="flex gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); setEditingVendor(v); }} className="btn btn-ghost p-2" aria-label="Edit vendor">
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedVendor(null); setEditingVendor(v); }} className="btn btn-ghost p-2" aria-label="Edit vendor">
                     <Edit2 size={14} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeletingVendor(v); }} className="btn btn-ghost p-2 text-red-400 border-red-500/20 hover:border-red-500/40 hover:text-red-300" aria-label="Delete vendor">
+                  <button onClick={(e) => { e.stopPropagation(); setSelectedVendor(null); setDeletingVendor(v); }} className="btn btn-ghost p-2 text-red-400 border-red-500/20 hover:border-red-500/40 hover:text-red-300" aria-label="Delete vendor">
                     <Trash2 size={14} />
                   </button>
                 </div>
