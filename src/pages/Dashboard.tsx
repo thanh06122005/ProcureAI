@@ -63,11 +63,11 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`badge ${map[status] || 'badge-yellow'}`}>{status.replace('-', ' ')}</span>;
 }
 
-const GRADIENT_COLORS: Record<string, string> = {
-  'Total Vendors': 'from-blue-400 to-blue-600',
-  'Open Purchase Orders': 'from-green-400 to-green-600',
-  'Overdue Deliveries': 'from-red-400 to-red-600',
-  'Avg Vendor Score': 'from-orange-400 to-orange-600',
+const BORDER_COLORS: Record<string, string> = {
+  'Total Vendors': '#3b82f6',
+  'Open Purchase Orders': '#22c55e',
+  'Overdue Deliveries': '#ef4444',
+  'Avg Vendor Score': '#f97316',
 };
 
 const TREND_DATA: Record<string, { direction: 'up' | 'down'; pct: string }> = {
@@ -80,12 +80,11 @@ const TREND_DATA: Record<string, { direction: 'up' | 'down'; pct: string }> = {
 function KPICard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
   const animated = useAnimatedCounter(numericValue);
-  const gradientCls = GRADIENT_COLORS[label] || 'from-blue-400 to-blue-600';
+  const borderColor = BORDER_COLORS[label] || '#3b82f6';
   const trend = TREND_DATA[label];
 
   return (
-    <div className="kpi-card p-5 relative overflow-hidden">
-      <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${gradientCls}`} />
+    <div className="kpi-card p-5 relative overflow-hidden" style={{ borderLeft: `4px solid ${borderColor}` }}>
       <div className="flex items-center justify-between mb-3">
         <span className="kpi-label text-sm text-slate-400 font-medium">{label}</span>
         <span className={color}>{icon}</span>
@@ -234,7 +233,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
           display: true,
           labels: { color: '#94a3b8', usePointStyle: true, padding: 16 },
         },
-        title: { display: false },
+        title: { display: true, text: 'Monthly PO Activity', color: '#fff', font: { size: 14 } },
         tooltip: {
           callbacks: {
             label: (ctx: any) => {
@@ -309,7 +308,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
   } else {
     try {
       chartSection = (
-        <div style={{ height: 300 }}>
+        <div style={{ height: 320 }}>
           <Bar data={chartData} options={chartOptions} />
         </div>
       );
@@ -355,41 +354,36 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Monthly PO Activity</h2>
-            <div className="flex gap-1.5">
-              <RangeButton months={3} current={range} onSelect={setRange} />
-              <RangeButton months={6} current={range} onSelect={setRange} />
-              <RangeButton months={12} current={range} onSelect={setRange} />
-            </div>
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Monthly PO Activity</h2>
+          <div className="flex gap-1.5">
+            <RangeButton months={3} current={range} onSelect={setRange} />
+            <RangeButton months={6} current={range} onSelect={setRange} />
+            <RangeButton months={12} current={range} onSelect={setRange} />
           </div>
-          <div className="chart-wrapper-mobile">
-            {chartSection}
-          </div>
-          {monthlyData.showingPartial && (
-            <p className="chart-note-mobile text-xs text-slate-500 mt-3 italic">Showing available data only</p>
-          )}
         </div>
+        <div className="chart-wrapper-mobile">
+          {chartSection}
+        </div>
+        {monthlyData.showingPartial && (
+          <p className="chart-note-mobile text-xs text-slate-500 mt-3 italic">Showing available data only</p>
+        )}
+      </div>
 
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <button onClick={() => onNavigate('vendors')} className="btn btn-primary w-full justify-center">
-              <Users size={16} /> Manage Vendors
-            </button>
-            <button onClick={() => onNavigate('purchase-orders')} className="btn btn-ghost w-full justify-center">
-              <FileText size={16} /> Create PO
-            </button>
-            <button onClick={() => onNavigate('delivery')} className="btn btn-ghost w-full justify-center">
-              <AlertTriangle size={16} /> Track Deliveries
-            </button>
-            <button onClick={() => onNavigate('ai-risk')} className="btn btn-ghost w-full justify-center">
-              <AlertTriangle size={16} /> View Risk Alerts
-            </button>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button onClick={() => onNavigate('vendors')} className="btn btn-primary w-full justify-center">
+          <Users size={16} /> Manage Vendors
+        </button>
+        <button onClick={() => onNavigate('purchase-orders')} className="btn btn-ghost w-full justify-center">
+          <FileText size={16} /> Create PO
+        </button>
+        <button onClick={() => onNavigate('delivery')} className="btn btn-ghost w-full justify-center">
+          <AlertTriangle size={16} /> Track Deliveries
+        </button>
+        <button onClick={() => onNavigate('ai-risk')} className="btn btn-ghost w-full justify-center">
+          <AlertTriangle size={16} /> View Risk Alerts
+        </button>
       </div>
 
       <div className="card p-6 overflow-x-auto">
@@ -414,7 +408,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
             <tbody>
               {recentPOs.map((po) => (
                 <tr key={po.id} className="border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
+                  <td className="px-4 py-3 font-mono text-accent-400 whitespace-nowrap">{po.poNumber}</td>
                   <td className="px-4 py-3 text-white">{po.vendorName}</td>
                   <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">{po.date}</td>
                   <td className="px-4 py-3 text-right text-white font-medium">${po.total.toLocaleString()}</td>
