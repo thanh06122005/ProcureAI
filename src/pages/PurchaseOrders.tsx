@@ -524,8 +524,27 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
 
   const vendor = getVendors().find((v) => v.id === po.vendorId) ?? null;
   const paymentTerms = vendor?.paymentTerms ?? 'Net 30';
+  const docRef = React.useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const html = docRef.current?.innerHTML;
+    if (!html) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><style>
+body { margin: 20px; font-family: sans-serif; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ccc; padding: 8px; }
+thead tr { background: #3b82f6; color: white; }
+tbody tr:nth-child(odd) { background: white; }
+tbody tr:nth-child(even) { background: #f9fafb; }
+.grand-total-row { background: #3b82f6; color: white; font-weight: bold; }
+.grand-total-row td { border-color: #3b82f6; }
+</style></head><body>${html}</body></html>`);
+    win.document.close();
+    win.print();
+    win.close();
+  };
 
   return (
     <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -546,7 +565,7 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
         </div>
 
         {/* === PO DOCUMENT === */}
-        <div className="bg-white text-gray-900 rounded-lg p-8 print:p-0 print:rounded-none">
+        <div ref={docRef} className="po-document bg-white text-gray-900 rounded-lg p-8">
           {/* Header */}
           <div className="po-doc-header flex items-start justify-between pb-4 border-b-2 border-gray-800 mb-6">
             <div>
@@ -619,20 +638,22 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
 
           {/* Totals */}
           <div className="po-doc-totals flex justify-end mb-8">
-            <div className="w-64 space-y-1.5 pt-3 border-t-2 border-gray-800">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (10%)</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-300">
-                <span>Grand Total</span>
-                <span>${grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
+            <table className="w-64 text-sm border-collapse">
+              <tbody>
+                <tr>
+                  <td className="text-gray-600 py-1">Subtotal</td>
+                  <td className="text-right py-1">${subtotal.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td className="text-gray-600 py-1">Tax (10%)</td>
+                  <td className="text-right py-1">${tax.toFixed(2)}</td>
+                </tr>
+                <tr className="grand-total-row">
+                  <td className="py-2 font-bold">Grand Total</td>
+                  <td className="text-right py-2 font-bold">${grandTotal.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           {/* Footer */}
