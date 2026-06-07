@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown, CreditCard as Edit2 } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -61,10 +61,6 @@ export default function PurchaseOrders() {
   });
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null);
   const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
-  const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
-
-  // Ref for scrolling to form
-  const formRef = useRef<HTMLDivElement>(null);
 
   // Filter and sort state
   const [filterStatus, setFilterStatus] = useState('all');
@@ -139,24 +135,6 @@ export default function PurchaseOrders() {
     setPurchaseOrders(updated);
   };
 
-  const updatePO = (updatedPO: PurchaseOrder) => {
-    const updated = pos.map((p) => (p.id === updatedPO.id ? updatedPO : p));
-    setPosState(updated);
-    setPurchaseOrders(updated);
-  };
-
-  const handleEditPO = (po: PurchaseOrder) => {
-    setEditingPO(po);
-    // Scroll to form
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
-
-  const cancelEdit = () => {
-    setEditingPO(null);
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,25 +148,14 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Create New Purchase Order Section */}
-      <div ref={formRef} className="card p-6">
+      <div className="card p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          {editingPO ? (
-            <>
-              <Edit2 size={18} className="text-accent-500" /> Editing {editingPO.poNumber}
-            </>
-          ) : (
-            <>
-              <Plus size={18} className="text-accent-500" /> Create New Purchase Order
-            </>
-          )}
+          <Plus size={18} className="text-accent-500" /> Create New Purchase Order
         </h2>
         <POCreateForm
           vendors={vendors}
           existingPOs={pos}
-          editingPO={editingPO}
           onSave={addPO}
-          onUpdate={updatePO}
-          onCancelEdit={cancelEdit}
         />
       </div>
 
@@ -314,13 +281,6 @@ export default function PurchaseOrders() {
                           <Eye size={14} />
                         </button>
                         <button
-                          onClick={() => handleEditPO(po)}
-                          className="p-1.5 text-slate-400 hover:text-accent-400 hover:bg-accent-500/10 rounded transition-colors"
-                          aria-label="Edit order"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
                           onClick={() => setDeletingPO(po)}
                           className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           aria-label="Delete order"
@@ -354,7 +314,7 @@ export default function PurchaseOrders() {
   );
 }
 
-/* ========== PO CREATE/EDIT FORM ========== */
+/* ========== PO CREATE FORM ========== */
 
 interface LineItem extends POItem {
   id: string;
@@ -363,17 +323,11 @@ interface LineItem extends POItem {
 function POCreateForm({
   vendors,
   existingPOs,
-  editingPO,
   onSave,
-  onUpdate,
-  onCancelEdit,
 }: {
   vendors: Vendor[];
   existingPOs: PurchaseOrder[];
-  editingPO: PurchaseOrder | null;
   onSave: (po: PurchaseOrder) => void;
-  onUpdate: (po: PurchaseOrder) => void;
-  onCancelEdit: () => void;
 }) {
   const [vendorId, setVendorId] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
@@ -382,32 +336,6 @@ function POCreateForm({
   ]);
   const [submitted, setSubmitted] = useState(false);
   const pendingFocusRef = useRef<string | null>(null);
-
-  // Track if we're in edit mode
-  const isEditMode = editingPO !== null;
-
-  // Populate form when editingPO changes
-  useEffect(() => {
-    if (editingPO) {
-      setVendorId(editingPO.vendorId);
-      setDeliveryDate(editingPO.deliveryDate);
-      setLineItems(
-        editingPO.items.map((item) => ({
-          id: crypto.randomUUID(),
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        }))
-      );
-      setSubmitted(false);
-    } else {
-      // Reset to empty form when not editing
-      setVendorId('');
-      setDeliveryDate('');
-      setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
-      setSubmitted(false);
-    }
-  }, [editingPO]);
 
   const focusInput = useCallback((itemId: string, field: 'description' | 'quantity' | 'unitPrice') => {
     const el = document.getElementById(`item-${itemId}-${field}`);
@@ -447,10 +375,7 @@ function POCreateForm({
   };
 
   const selectedVendor = vendors.find((v) => v.id === vendorId);
-  const newPONumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
-
-  // Use existing PO number when editing, otherwise generate new one
-  const poNumber = isEditMode ? editingPO!.poNumber : newPONumber;
+  const poNumber = useMemo(() => generatePONumber(existingPOs), [existingPOs]);
 
   // Check for invalid quantities (not positive)
   const hasInvalidQuantity = lineItems.some(
@@ -502,57 +427,29 @@ function POCreateForm({
     if (lineItems.length === 0) return;
     if (hasInvalidQuantity) return;
 
-    if (isEditMode) {
-      // Update existing PO - preserve id, poNumber, date, status
-      const updatedPO: PurchaseOrder = {
-        id: editingPO!.id,
-        poNumber: editingPO!.poNumber,
-        vendorId,
-        vendorName: selectedVendor!.name,
-        date: editingPO!.date,
-        deliveryDate,
-        total: grandTotal,
-        status: editingPO!.status,
-        items: lineItems.map(({ description, quantity, unitPrice }) => ({
-          description,
-          quantity,
-          unitPrice,
-        })),
-      };
-      onUpdate(updatedPO);
-    } else {
-      // Create new PO
-      const newPO: PurchaseOrder = {
-        id: `po${Date.now()}`,
-        poNumber,
-        vendorId,
-        vendorName: selectedVendor!.name,
-        date: new Date().toISOString().slice(0, 10),
-        deliveryDate,
-        total: grandTotal,
-        status: 'submitted',
-        items: lineItems.map(({ description, quantity, unitPrice }) => ({
-          description,
-          quantity,
-          unitPrice,
-        })),
-      };
-      onSave(newPO);
-    }
+    const newPO: PurchaseOrder = {
+      id: `po${Date.now()}`,
+      poNumber,
+      vendorId,
+      vendorName: selectedVendor!.name,
+      date: new Date().toISOString().slice(0, 10),
+      deliveryDate,
+      total: grandTotal,
+      status: 'submitted',
+      items: lineItems.map(({ description, quantity, unitPrice }) => ({
+        description,
+        quantity,
+        unitPrice,
+      })),
+    };
+
+    onSave(newPO);
 
     // Reset form
     setVendorId('');
     setDeliveryDate('');
     setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
     setSubmitted(false);
-  };
-
-  const handleCancelEdit = () => {
-    setVendorId('');
-    setDeliveryDate('');
-    setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
-    setSubmitted(false);
-    onCancelEdit();
   };
 
   // No vendors case
@@ -741,17 +638,8 @@ function POCreateForm({
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
-        {isEditMode && (
-          <button
-            type="button"
-            onClick={handleCancelEdit}
-            className="btn btn-ghost flex items-center gap-2"
-          >
-            <X size={16} /> Cancel Edit
-          </button>
-        )}
+      {/* Save Button */}
+      <div className="flex justify-end">
         <button
           type="submit"
           disabled={!canSave}
@@ -759,7 +647,7 @@ function POCreateForm({
             canSave ? 'btn-primary' : 'bg-navy-700 text-slate-500 cursor-not-allowed'
           }`}
         >
-          <FileText size={16} /> {isEditMode ? 'Save Changes' : 'Save Purchase Order'}
+          <FileText size={16} /> Save Purchase Order
         </button>
       </div>
       {!canSave && lineItems.length > 0 && hasInvalidQuantity && (
