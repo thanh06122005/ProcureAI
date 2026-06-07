@@ -35,6 +35,21 @@ const CATEGORY_COLORS: Record<string, string> = {
   'IT Services': 'badge-orange',
 };
 
+const CATEGORY_BG_COLORS: Record<string, string> = {
+  Electronics: 'bg-blue-500',
+  Logistics: 'bg-green-500',
+  'Raw Materials': 'bg-yellow-500',
+  'Office Supplies': 'bg-purple-500',
+  'IT Services': 'bg-orange-500',
+};
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length === 0) return '';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
 const STATUS_COLORS: Record<string, string> = {
   active: 'badge-green',
   inactive: 'badge-red',
@@ -113,6 +128,35 @@ export default function Vendors() {
     } catch { return 0; }
   };
 
+  const exportCSV = () => {
+    if (vendors.length === 0) {
+      alert('No vendors to export');
+      return;
+    }
+    const headers = ['ID', 'Company', 'Category', 'Contact', 'Email', 'Phone', 'PaymentTerms', 'LeadTime', 'Status'];
+    const rows = vendors.map((v) => [
+      v.id,
+      v.name,
+      v.category,
+      v.contact,
+      v.email,
+      v.phone,
+      v.paymentTerms,
+      String(v.leadTime),
+      v.status,
+    ]);
+    const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'vendors.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -123,9 +167,14 @@ export default function Vendors() {
           </h1>
           <p className="text-sm text-slate-400 mt-1">{vendors.length} registered vendors</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn btn-primary">
-          <Plus size={16} /> Add Vendor
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportCSV} className="btn btn-ghost">
+            Export CSV
+          </button>
+          <button onClick={() => setShowAdd(true)} className="btn btn-primary">
+            <Plus size={16} /> Add Vendor
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -207,13 +256,20 @@ export default function Vendors() {
               onClick={() => setSelectedVendor(v)}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white text-base truncate">
-                    <Highlight text={v.name} query={search} />
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <CategoryBadge category={v.category} />
-                    <StatusBadge status={v.status} />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 ${CATEGORY_BG_COLORS[v.category] || 'bg-slate-500'}`}
+                  >
+                    {getInitials(v.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-white text-base truncate">
+                      <Highlight text={v.name} query={search} />
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <CategoryBadge category={v.category} />
+                      <StatusBadge status={v.status} />
+                    </div>
                   </div>
                 </div>
                 <span className="text-xs text-slate-500 font-mono ml-2 flex-shrink-0">{v.id}</span>
