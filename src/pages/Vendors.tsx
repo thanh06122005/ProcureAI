@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X } from 'lucide-react';
-import { getVendors, setVendors, getPurchaseOrders } from '../lib/store';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Plus, Search, MapPin, Mail, Phone, Clock, Trash2, CreditCard as Edit2, Building2, X, Star, FileText, Calendar, ShieldCheck, CreditCard } from 'lucide-react';
+import { getVendors, setVendors, getPurchaseOrders, getVendorRatings } from '../lib/store';
 import type { Vendor } from '../lib/types';
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -68,6 +68,7 @@ export default function Vendors() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deletingVendor, setDeletingVendor] = useState<Vendor | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
   const filtered = useMemo(() => {
     return vendors.filter((v) => {
@@ -95,6 +96,7 @@ export default function Vendors() {
     setVendorsState(updated);
     setVendors(updated);
     setEditingVendor(null);
+    setSelectedVendor(v);
   };
 
   const deleteVendor = (id: string) => {
@@ -102,6 +104,7 @@ export default function Vendors() {
     setVendorsState(updated);
     setVendors(updated);
     setDeletingVendor(null);
+    setSelectedVendor(null);
   };
 
   const openPOCount = (vendorId: string): number => {
@@ -199,7 +202,11 @@ export default function Vendors() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((v) => (
-            <div key={v.id} className="card p-5">
+            <div
+              key={v.id}
+              className="card p-5 cursor-pointer"
+              onClick={() => setSelectedVendor(v)}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-white text-base truncate">
@@ -224,10 +231,10 @@ export default function Vendors() {
               <div className="flex items-center justify-between pt-3 border-t border-slate-700/40">
                 <span className="text-xs text-slate-500">{v.paymentTerms}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditingVendor(v)} className="btn btn-ghost p-2" aria-label="Edit vendor">
+                  <button onClick={(e) => { e.stopPropagation(); setEditingVendor(v); }} className="btn btn-ghost p-2" aria-label="Edit vendor">
                     <Edit2 size={14} />
                   </button>
-                  <button onClick={() => setDeletingVendor(v)} className="btn btn-ghost p-2 text-red-400 border-red-500/20 hover:border-red-500/40 hover:text-red-300" aria-label="Delete vendor">
+                  <button onClick={(e) => { e.stopPropagation(); setDeletingVendor(v); }} className="btn btn-ghost p-2 text-red-400 border-red-500/20 hover:border-red-500/40 hover:text-red-300" aria-label="Delete vendor">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -267,7 +274,204 @@ export default function Vendors() {
           onCancel={() => setDeletingVendor(null)}
         />
       )}
+
+      {/* Detail Panel */}
+      <VendorDetailPanel
+        vendor={selectedVendor}
+        onClose={() => setSelectedVendor(null)}
+        onEdit={(v) => { setSelectedVendor(null); setEditingVendor(v); }}
+        onDelete={(v) => { setSelectedVendor(null); setDeletingVendor(v); }}
+      />
     </div>
+  );
+}
+
+/* ========== VENDOR DETAIL PANEL ========== */
+
+const RISK_COLORS: Record<string, string> = {
+  low: 'text-green-400',
+  medium: 'text-yellow-400',
+  high: 'text-red-400',
+  critical: 'text-red-400',
+};
+
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-slate-700/30 last:border-0">
+      <span className="mt-0.5 text-slate-500 flex-shrink-0">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-slate-500 mb-0.5">{label}</p>
+        <p className="text-sm text-white break-words">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function VendorDetailPanel({
+  vendor,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  vendor: Vendor | null;
+  onClose: () => void;
+  onEdit: (v: Vendor) => void;
+  onDelete: (v: Vendor) => void;
+}) {
+  const open = vendor !== null;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  const poData = useMemo(() => {
+    if (!vendor) return { total: 0, lastDate: null };
+    try {
+      const pos = getPurchaseOrders().filter((po) => po.vendorId === vendor.id);
+      const lastDate = pos.length > 0
+        ? pos.map((p) => p.date).sort().reverse()[0]
+        : null;
+      return { total: pos.length, lastDate };
+    } catch { return { total: 0, lastDate: null }; }
+  }, [vendor]);
+
+  const rating = useMemo(() => {
+    if (!vendor) return null;
+    try {
+      return getVendorRatings().find((r) => r.vendorId === vendor.id) ?? null;
+    } catch { return null; }
+  }, [vendor]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-[150] bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+
+      {/* Slide-in panel */}
+      <div
+        className="fixed top-0 right-0 h-full w-[360px] max-w-full z-[160] bg-[#0f2240] border-l border-accent-500/15 shadow-2xl shadow-black/60 flex flex-col transition-transform duration-300 ease-in-out"
+        style={{ transform: open ? 'translateX(0)' : 'translateX(100%)' }}
+      >
+        {vendor && (
+          <>
+            {/* Panel header */}
+            <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-accent-500/10 flex-shrink-0">
+              <div className="flex-1 min-w-0 pr-3">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <CategoryBadge category={vendor.category} />
+                  <StatusBadge status={vendor.status} />
+                </div>
+                <h2 className="text-lg font-bold text-white leading-snug">{vendor.name}</h2>
+                <p className="text-xs text-slate-500 font-mono mt-1">{vendor.id}</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-navy-700/50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Close panel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-3">
+
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-navy-700/40 rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-500 mb-1">Total Orders</p>
+                  <p className="text-lg font-bold text-white">
+                    {poData.total === 0 ? <span className="text-sm font-normal text-slate-500">No orders yet</span> : poData.total}
+                  </p>
+                </div>
+                <div className="bg-navy-700/40 rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-500 mb-1">Avg Rating</p>
+                  <p className="text-lg font-bold text-white">
+                    {rating ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <Star size={13} className="text-yellow-400 fill-yellow-400" />
+                        {rating.overall.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-normal text-slate-500">Not rated yet</span>
+                    )}
+                  </p>
+                </div>
+                <div className="bg-navy-700/40 rounded-lg p-3 text-center">
+                  <p className="text-xs text-slate-500 mb-1">On-Time</p>
+                  <p className="text-lg font-bold text-white">{vendor.onTimeDelivery > 0 ? `${vendor.onTimeDelivery}%` : <span className="text-sm font-normal text-slate-500">—</span>}</p>
+                </div>
+              </div>
+
+              {/* Detail rows */}
+              <div className="mb-2">
+                <DetailRow icon={<Phone size={14} />} label="Contact Person" value={vendor.contact} />
+                <DetailRow icon={<Mail size={14} />} label="Email" value={vendor.email} />
+                {vendor.phone && <DetailRow icon={<Phone size={14} />} label="Phone" value={vendor.phone} />}
+                <DetailRow icon={<MapPin size={14} />} label="Location" value={vendor.location || '—'} />
+                <DetailRow icon={<Clock size={14} />} label="Lead Time" value={`${vendor.leadTime} days`} />
+                <DetailRow icon={<CreditCard size={14} />} label="Payment Terms" value={vendor.paymentTerms} />
+                <DetailRow icon={<Calendar size={14} />} label="Contract End" value={vendor.contractEnd} />
+                <DetailRow
+                  icon={<ShieldCheck size={14} />}
+                  label="Risk Level"
+                  value={<span className={RISK_COLORS[vendor.riskLevel] || 'text-white'}>{vendor.riskLevel.charAt(0).toUpperCase() + vendor.riskLevel.slice(1)}</span>}
+                />
+                <DetailRow
+                  icon={<FileText size={14} />}
+                  label="Last Order Date"
+                  value={poData.lastDate ?? <span className="text-slate-500">No orders yet</span>}
+                />
+              </div>
+
+              {/* Quality metrics */}
+              {(vendor.qualityScore > 0 || vendor.onTimeDelivery > 0) && (
+                <div className="mt-4 pt-3 border-t border-slate-700/30">
+                  <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">Performance</p>
+                  {[
+                    { label: 'Quality Score', value: vendor.qualityScore, color: 'bg-accent-500' },
+                    { label: 'On-Time Delivery', value: vendor.onTimeDelivery, color: 'bg-green-500' },
+                    { label: 'Cost Index', value: vendor.costIndex, color: 'bg-yellow-500' },
+                  ].map((m) => (
+                    <div key={m.label} className="mb-2.5">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">{m.label}</span>
+                        <span className="text-white font-medium">{m.value}%</span>
+                      </div>
+                      <div className="h-1.5 bg-navy-700 rounded-full">
+                        <div className={`h-1.5 rounded-full ${m.color}`} style={{ width: `${m.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex gap-3 px-5 py-4 border-t border-accent-500/10 flex-shrink-0">
+              <button
+                onClick={() => onEdit(vendor)}
+                className="btn btn-ghost flex-1 justify-center"
+              >
+                <Edit2 size={14} /> Edit
+              </button>
+              <button
+                onClick={() => onDelete(vendor)}
+                className="btn flex-1 justify-center bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:text-red-300"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
