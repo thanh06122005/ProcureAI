@@ -5,12 +5,15 @@ import type { Vendor } from '../lib/types';
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (!query.trim()) return <>{text}</>;
-  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Use 'gi' only for split (captures), use a separate non-stateful check for marking
+  const splitRegex = new RegExp(`(${escaped})`, 'gi');
+  const testRegex = new RegExp(`^${escaped}$`, 'i');
+  const parts = text.split(splitRegex);
   return (
     <>
       {parts.map((part, i) =>
-        regex.test(part) ? (
+        testRegex.test(part) ? (
           <mark key={i} className="bg-yellow-400/80 text-navy-900 rounded-sm px-0.5">{part}</mark>
         ) : (
           <span key={i}>{part}</span>
