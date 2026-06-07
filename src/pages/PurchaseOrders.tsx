@@ -281,6 +281,7 @@ function POCreateForm({
 
     // Validation
     if (!vendorId) return;
+    if (!deliveryDate) return;
     if (lineItems.length === 0) return;
     if (hasInvalidQuantity) return;
 
@@ -320,7 +321,7 @@ function POCreateForm({
     );
   }
 
-  const canSave = vendorId && lineItems.length > 0 && !hasInvalidQuantity;
+  const canSave = vendorId && deliveryDate && lineItems.length > 0 && !hasInvalidQuantity;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -333,16 +334,21 @@ function POCreateForm({
           </div>
         </div>
         <div className="flex-1">
-          <label className="text-xs text-slate-400 mb-1 block">Expected Delivery Date</label>
+          <label className="text-xs text-slate-400 mb-1 block">Expected Delivery Date *</label>
           <div className="relative">
             <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="date"
               value={deliveryDate}
               onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-navy-900 border border-accent-500/15 rounded-lg text-sm text-white focus:outline-none focus:border-accent-500/40 relative z-[2]"
+              className={`w-full pl-9 pr-3 py-2 bg-navy-900 border rounded-lg text-sm text-white focus:outline-none focus:border-accent-500/40 relative z-[2] ${
+                submitted && !deliveryDate ? 'border-red-500' : 'border-accent-500/15'
+              }`}
             />
           </div>
+          {submitted && !deliveryDate && (
+            <p className="text-red-400 text-xs mt-1">Delivery date is required</p>
+          )}
         </div>
       </div>
 
