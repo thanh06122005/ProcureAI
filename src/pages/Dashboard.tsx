@@ -1,10 +1,12 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend,
@@ -12,8 +14,6 @@ import {
 import { Users, FileText, AlertTriangle, Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { getVendors, getPurchaseOrders, getVendorRatings, getDeliveries } from '../lib/store';
 import type { Page } from '../lib/types';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function useAnimatedCounter(target: number, duration = 1500): string {
   const [display, setDisplay] = useState(target === 0 ? '0' : '0');
@@ -103,11 +103,54 @@ function KPICard({ label, value, icon, color }: { label: string; value: number |
   );
 }
 
+type RangeOption = 3 | 6 | 12;
+
+function RangeButton({ months, current, onSelect }: { months: RangeOption; current: RangeOption; onSelect: (r: RangeOption) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(months)}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+        current === months
+          ? 'bg-accent-500 text-white shadow-md shadow-accent-500/25'
+          : 'bg-navy-700/60 text-slate-400 hover:text-white hover:bg-navy-700'
+      }`}
+    >
+      {months}M
+    </button>
+  );
+}
+
 export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const vendors = useMemo(() => { try { return getVendors(); } catch { return []; } }, []);
   const pos = useMemo(() => { try { return getPurchaseOrders(); } catch { return []; } }, []);
   const ratings = useMemo(() => { try { return getVendorRatings(); } catch { return []; } }, []);
   const deliveries = useMemo(() => { try { return getDeliveries(); } catch { return []; } }, []);
+
+  const [range, setRange] = useState<RangeOption>(6);
+  const [chartReady, setChartReady] = useState(false);
+  const [chartError, setChartError] = useState(false);
+
+  useEffect(() => {
+    const initChart = () => {
+      try {
+        if (typeof ChartJS !== 'undefined' && ChartJS.register) {
+          ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
+          setChartReady(true);
+        } else {
+          setChartError(true);
+        }
+      } catch {
+        setChartError(true);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      initChart();
+    } else {
+      window.addEventListener('load', initChart);
+      return () => window.removeEventListener('load', initChart);
+    }
+  }, []);
 
   const openPOs = pos.filter((p) => ['submitted', 'approved', 'shipped'].includes(p.status)).length;
   const overdueDeliveries = pos.filter((p) => p.status === 'overdue').length + deliveries.filter((d) => d.status === 'delayed').length;
@@ -120,60 +163,180 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
     { label: 'Avg Vendor Score', value: avgScore, icon: <Star size={24} />, color: 'text-yellow-400' },
   ];
 
-  const monthlyPOData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const counts = [3, 5, 7, 4, 6, pos.length];
-    return {
-      labels: months,
-      datasets: [{
-        label: 'Monthly PO Count',
-        data: counts,
-        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-        borderColor: '#3b82f6',
-        borderWidth: 1,
-        borderRadius: 6,
-      }],
-    };
-  }, [pos.length]);
+  const monthlyData = useMemo(() => {
+    const now = new Date();
+    const allMonthsInRange: { key: string; label: string }[] = [];
+    for (let i = range - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('en', { month: 'short' });
+      allMonthsInRange.push({ key, label });
+    }
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: { display: false },
-    },
-    scales: {
-      x: {
-        ticks: { color: '#94a3b8' },
-        grid: { color: 'rgba(59, 130, 246, 0.08)' },
+    const availableMonths = allMonthsInRange.filter((m) =>
+      pos.some((p) => p.date.startsWith(m.key))
+    );
+
+    const showingPartial = availableMonths.length < range;
+    const displayMonths = availableMonths.length > 0 ? availableMonths : allMonthsInRange.slice(-3);
+
+    const counts = displayMonths.map((m) => pos.filter((p) => p.date.startsWith(m.key)).length);
+    const spend = displayMonths.map((m) =>
+      pos.filter((p) => p.date.startsWith(m.key)).reduce((s, p) => s + p.total, 0)
+    );
+
+    return { labels: displayMonths.map((m) => m.label), counts, spend, showingPartial };
+  }, [pos, range]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chartData: any = useMemo(
+    () => ({
+      labels: monthlyData.labels,
+      datasets: [
+        {
+          label: 'PO Count',
+          data: monthlyData.counts,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          borderRadius: 6,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Total Spend',
+          type: 'line',
+          data: monthlyData.spend,
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          pointBackgroundColor: '#f97316',
+          pointBorderColor: '#f97316',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.3,
+          yAxisID: 'y1',
+        },
+      ],
+    }),
+    [monthlyData]
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chartOptions: any = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
       },
-      y: {
-        beginAtZero: true,
-        ticks: { color: '#94a3b8', stepSize: 2 },
-        grid: { color: 'rgba(59, 130, 246, 0.08)' },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#94a3b8', usePointStyle: true, padding: 16 },
+        },
+        title: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx: any) => {
+              const label = ctx.dataset?.label || '';
+              if (label === 'PO Count') {
+                return `PO Count: ${ctx.parsed?.y ?? 0}`;
+              }
+              return `Total Spend: $${(ctx.parsed?.y ?? 0).toLocaleString()}`;
+            },
+          },
+        },
       },
-    },
-  };
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8' },
+          grid: { color: 'rgba(59, 130, 246, 0.08)' },
+        },
+        y: {
+          type: 'linear',
+          position: 'left',
+          beginAtZero: true,
+          ticks: { color: '#94a3b8', stepSize: 2 },
+          grid: { color: 'rgba(59, 130, 246, 0.08)' },
+          title: { display: true, text: 'PO Count', color: '#94a3b8' },
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          beginAtZero: true,
+          ticks: {
+            color: '#f97316',
+            callback: (value: any) =>
+              `$${(typeof value === 'number' ? value : Number(value) / 1000).toLocaleString()}`,
+          },
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Total Spend', color: '#f97316' },
+        },
+      },
+    }),
+    []
+  );
 
   const recentPOs = pos.slice(0, 5);
 
   let chartSection: React.ReactNode;
-  try {
+  if (chartError || !chartReady) {
     chartSection = (
-      <div style={{ height: 300 }}>
-        <Bar data={monthlyPOData} options={chartOptions} />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead>
+            <tr className="border-b border-slate-700/50">
+              <th className="px-4 py-2 text-slate-400 font-medium">Month</th>
+              <th className="px-4 py-2 text-slate-400 font-medium text-right">PO Count</th>
+              <th className="px-4 py-2 text-slate-400 font-medium text-right">Total Spend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monthlyData.labels.map((label, i) => (
+              <tr key={label} className="border-b border-slate-700/30">
+                <td className="px-4 py-2 text-slate-300">{label}</td>
+                <td className="px-4 py-2 text-right text-white">{monthlyData.counts[i]}</td>
+                <td className="px-4 py-2 text-right text-white">${monthlyData.spend[i].toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {chartError && (
+          <p className="text-xs text-slate-500 mt-2">Chart unavailable; showing data as table.</p>
+        )}
       </div>
     );
-  } catch {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const counts = [3, 5, 7, 4, 6, pos.length];
-    chartSection = (
-      <table className="w-full text-sm text-left text-slate-300">
-        <thead><tr>{months.map((m) => <th key={m} className="px-3 py-2">{m}</th>)}</tr></thead>
-        <tbody><tr>{counts.map((c, i) => <td key={i} className="px-3 py-2">{c}</td>)}</tr></tbody>
-      </table>
-    );
+  } else {
+    try {
+      chartSection = (
+        <div style={{ height: 300 }}>
+          <Bar data={chartData} options={chartOptions} />
+        </div>
+      );
+    } catch {
+      chartSection = (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-slate-700/50">
+                <th className="px-4 py-2 text-slate-400 font-medium">Month</th>
+                <th className="px-4 py-2 text-slate-400 font-medium text-right">PO Count</th>
+                <th className="px-4 py-2 text-slate-400 font-medium text-right">Total Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyData.labels.map((label, i) => (
+                <tr key={label} className="border-b border-slate-700/30">
+                  <td className="px-4 py-2 text-slate-300">{label}</td>
+                  <td className="px-4 py-2 text-right text-white">{monthlyData.counts[i]}</td>
+                  <td className="px-4 py-2 text-right text-white">${monthlyData.spend[i].toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
   }
 
   return (
@@ -194,8 +357,18 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Monthly PO Count</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Monthly PO Activity</h2>
+            <div className="flex gap-1.5">
+              <RangeButton months={3} current={range} onSelect={setRange} />
+              <RangeButton months={6} current={range} onSelect={setRange} />
+              <RangeButton months={12} current={range} onSelect={setRange} />
+            </div>
+          </div>
           {chartSection}
+          {monthlyData.showingPartial && (
+            <p className="text-xs text-slate-500 mt-3 italic">Showing available data only</p>
+          )}
         </div>
 
         <div className="card p-6">
