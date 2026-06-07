@@ -339,8 +339,6 @@
     font-size: 12px !important;
   }
 
-  /* Hide everything outside the print area */
-  .print-overlay,
   .print-controls,
   .sidebar-mobile,
   .main-content-mobile,
@@ -349,6 +347,14 @@
   header,
   footer {
     display: none !important;
+  }
+
+  .print-overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
   }
 
   .print-area {
