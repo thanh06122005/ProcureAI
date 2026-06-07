@@ -70,7 +70,7 @@ export default function PurchaseOrders() {
   };
 
   return (
-    <div className="no-print space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -528,10 +528,10 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
   const handlePrint = () => window.print();
 
   return (
-    <div className="print-modal-wrapper fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="print-modal card p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+    <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="print-area card p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
         {/* Print Controls - hidden during print */}
-        <div className="print-actions flex items-center justify-between mb-4">
+        <div className="print-controls flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Eye size={18} className="text-accent-500" /> PO Document
           </h2>
@@ -546,7 +546,7 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
         </div>
 
         {/* === PO DOCUMENT === */}
-        <div className="po-document bg-white text-gray-900 rounded-lg p-8">
+        <div className="bg-white text-gray-900 rounded-lg p-8 print:p-0 print:rounded-none">
           {/* Header */}
           <div className="po-doc-header flex items-start justify-between pb-4 border-b-2 border-gray-800 mb-6">
             <div>
