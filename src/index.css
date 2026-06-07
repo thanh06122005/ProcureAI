@@ -340,7 +340,14 @@
   }
 
   /* Hide everything outside the print area */
-  .print-overlay,
+  .print-overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
   .print-controls,
   .sidebar-mobile,
   .main-content-mobile,
