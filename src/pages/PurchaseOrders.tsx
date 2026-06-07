@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, AlertCircle, Calendar, Building2, Calculator, Printer, X, Filter, ArrowUpDown } from 'lucide-react';
 import { getPurchaseOrders, setPurchaseOrders, getVendors } from '../lib/store';
 import type { PurchaseOrder, POItem, Vendor } from '../lib/types';
 
@@ -12,10 +12,28 @@ function StatusBadge({ status }: { status: string }) {
     overdue: { cls: 'badge-red', label: 'Overdue' },
     draft: { cls: 'badge-yellow', label: 'Draft' },
     cancelled: { cls: 'badge-red', label: 'Cancelled' },
+    invoiced: { cls: 'badge-purple', label: 'Invoiced' },
   };
   const s = map[status] || { cls: 'badge-yellow', label: status };
   return <span className={`badge ${s.cls}`}>{s.label}</span>;
 }
+
+// Status filter options with mapping to actual status values
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Statuses' },
+  { value: 'submitted', label: 'Ordered' },
+  { value: 'approved', label: 'Confirmed' },
+  { value: 'shipped', label: 'In Transit' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'invoiced', label: 'Invoiced' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'date-desc', label: 'Date (Newest First)' },
+  { value: 'date-asc', label: 'Date (Oldest First)' },
+  { value: 'total-desc', label: 'Total (High to Low)' },
+  { value: 'status', label: 'Status' },
+];
 
 function generatePONumber(existingPOs: PurchaseOrder[]): string {
   const currentYear = new Date().getFullYear();
@@ -44,6 +62,11 @@ export default function PurchaseOrders() {
   const [viewingPO, setViewingPO] = useState<PurchaseOrder | null>(null);
   const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
 
+  // Filter and sort state
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterVendor, setFilterVendor] = useState('all');
+  const [sortBy, setSortBy] = useState('date-desc');
+
   // Refresh data on focus
   useEffect(() => {
     const refresh = () => {
@@ -55,6 +78,49 @@ export default function PurchaseOrders() {
   }, []);
 
   const totalValue = pos.reduce((s, p) => s + p.total, 0);
+
+  // Filtered and sorted POs
+  const filteredPOs = useMemo(() => {
+    let result = [...pos];
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      result = result.filter((po) => po.status === filterStatus);
+    }
+
+    // Apply vendor filter
+    if (filterVendor !== 'all') {
+      result = result.filter((po) => po.vendorId === filterVendor);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'date-desc':
+        result.sort((a, b) => b.date.localeCompare(a.date));
+        break;
+      case 'date-asc':
+        result.sort((a, b) => a.date.localeCompare(b.date));
+        break;
+      case 'total-desc':
+        result.sort((a, b) => b.total - a.total);
+        break;
+      case 'status':
+        const statusOrder = ['submitted', 'approved', 'shipped', 'delivered', 'invoiced', 'overdue', 'cancelled'];
+        result.sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status));
+        break;
+    }
+
+    return result;
+  }, [pos, filterStatus, filterVendor, sortBy]);
+
+  const filteredTotalValue = filteredPOs.reduce((s, p) => s + p.total, 0);
+
+  const clearFilters = () => {
+    setFilterStatus('all');
+    setFilterVendor('all');
+  };
+
+  const hasActiveFilters = filterStatus !== 'all' || filterVendor !== 'all';
 
   const deletePO = (id: string) => {
     const updated = pos.filter((p) => p.id !== id);
@@ -96,15 +162,91 @@ export default function PurchaseOrders() {
       {/* Purchase Orders List Section */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-slate-700/40">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <FileText size={18} className="text-accent-500" /> Purchase Orders
-          </h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <FileText size={18} className="text-accent-500" /> Purchase Orders
+            </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Status Filter */}
+              <div className="relative">
+                <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="pl-8 pr-8 py-2 bg-navy-800 border border-accent-500/15 rounded-lg text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-accent-500/40 relative z-[2]"
+                >
+                  {STATUS_FILTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vendor Filter */}
+              <div className="relative">
+                <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={filterVendor}
+                  onChange={(e) => setFilterVendor(e.target.value)}
+                  className="pl-8 pr-8 py-2 bg-navy-800 border border-accent-500/15 rounded-lg text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-accent-500/40 relative z-[2]"
+                >
+                  <option value="all">All Vendors</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div className="relative">
+                <ArrowUpDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="pl-8 pr-8 py-2 bg-navy-800 border border-accent-500/15 rounded-lg text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-accent-500/40 relative z-[2]"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-accent-500 hover:text-accent-400 transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Stats Bar */}
+        <div className="px-4 py-2.5 bg-navy-700/30 border-b border-slate-700/40">
+          <p className="text-sm text-slate-400">
+            Showing <span className="text-white font-medium">{filteredPOs.length}</span> of <span className="text-white font-medium">{pos.length}</span> POs
+            <span className="mx-2 text-slate-600">|</span>
+            Total Value: <span className="text-white font-medium">${filteredTotalValue.toLocaleString()}</span>
+          </p>
+        </div>
+
         {pos.length === 0 ? (
           <div className="p-8 text-center text-slate-400">
             <FileText size={32} className="mx-auto mb-3 text-slate-600" />
             <p>No purchase orders yet</p>
             <p className="text-sm mt-1">Create your first order above</p>
+          </div>
+        ) : filteredPOs.length === 0 ? (
+          <div className="p-8 text-center text-slate-400">
+            <FileText size={32} className="mx-auto mb-3 text-slate-600" />
+            <p>No purchase orders match the selected filters.</p>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-accent-500 hover:text-accent-400 transition-colors mt-2"
+            >
+              Clear filters
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -121,7 +263,7 @@ export default function PurchaseOrders() {
                 </tr>
               </thead>
               <tbody>
-                {pos.map((po) => (
+                {filteredPOs.map((po) => (
                   <tr key={po.id} className="border-b border-slate-700/30 hover:bg-navy-700/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-accent-400">{po.poNumber}</td>
                     <td className="px-4 py-3 text-white">{po.vendorName}</td>
