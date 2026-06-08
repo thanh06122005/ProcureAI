@@ -93,8 +93,10 @@ function useAlerts(): AlertItem[] {
 export default function NavBar({ current, onNavigate }: NavBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
-  const bellRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileBellRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+  const desktopBellRef = useRef<HTMLDivElement>(null);
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
   const alerts = useAlerts();
   const alertCount = alerts.length;
@@ -103,10 +105,13 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
   useEffect(() => {
     if (!bellOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (
-        bellRef.current && !bellRef.current.contains(e.target as Node) &&
-        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
-      ) {
+      const insideMobile =
+        (mobileBellRef.current?.contains(e.target as Node)) ||
+        (mobileDropdownRef.current?.contains(e.target as Node));
+      const insideDesktop =
+        (desktopBellRef.current?.contains(e.target as Node)) ||
+        (desktopDropdownRef.current?.contains(e.target as Node));
+      if (!insideMobile && !insideDesktop) {
         setBellOpen(false);
       }
     };
@@ -137,7 +142,7 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
           <span className="text-lg font-bold text-white tracking-tight">ProcureAI</span>
         </div>
         {/* Mobile bell */}
-        <div className="ml-auto relative" ref={bellRef}>
+        <div className="ml-auto relative" ref={mobileBellRef}>
           <button
             onClick={() => setBellOpen(!bellOpen)}
             className="relative p-2 text-slate-400 hover:text-white transition-colors"
@@ -153,7 +158,7 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
         </div>
         {bellOpen && (
           <div
-            ref={dropdownRef}
+            ref={mobileDropdownRef}
             className="fixed top-12 right-0 w-72 max-h-80 overflow-y-auto bg-[#0f2240] border border-accent-500/15 rounded-b-lg shadow-xl shadow-black/40 z-[201] scrollbar-thin"
           >
             <AlertDropdownContent alerts={alerts} onNavigate={handleNav} />
@@ -180,7 +185,7 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
             <span className="text-2xl">🚛</span>
             <span className="text-xl font-bold text-white tracking-tight">ProcureAI</span>
           </div>
-          <div className="relative" ref={bellRef}>
+          <div className="relative" ref={desktopBellRef}>
             <button
               onClick={() => setBellOpen(!bellOpen)}
               className="relative p-1.5 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-navy-700/50"
@@ -195,7 +200,7 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
             </button>
             {bellOpen && (
               <div
-                ref={dropdownRef}
+                ref={desktopDropdownRef}
                 className="absolute left-0 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#0f2240] border border-accent-500/15 rounded-lg shadow-xl shadow-black/40 z-[300] scrollbar-thin"
               >
                 <AlertDropdownContent alerts={alerts} onNavigate={handleNav} />

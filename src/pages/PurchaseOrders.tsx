@@ -842,7 +842,6 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
   const grandTotal = subtotal + tax;
 
   const vendor = getVendors().find((v) => v.id === po.vendorId) ?? null;
-  const paymentTerms = vendor?.paymentTerms ?? 'Net 30';
 
   const handlePrint = () => {
     const printArea = document.querySelector('.print-area') as HTMLElement | null;
@@ -912,7 +911,6 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2 text-sm">
                   {vendor.contact && <p><span className="text-gray-500">Contact:</span> {vendor.contact}</p>}
                   {vendor.email && <p><span className="text-gray-500">Email:</span> {vendor.email}</p>}
-                  {vendor.phone && <p><span className="text-gray-500">Phone:</span> {vendor.phone}</p>}
                   {vendor.location && <p><span className="text-gray-500">Location:</span> {vendor.location}</p>}
                 </div>
               ) : (
@@ -978,7 +976,7 @@ function ViewPOModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void }
 
           {/* Footer */}
           <div className="pt-4 border-t border-gray-300 text-xs text-gray-500">
-            <p>Terms: {paymentTerms}. This PO is system-generated.</p>
+            <p>Terms: Net 30. This PO is system-generated.</p>
           </div>
         </div>
       </div>
