@@ -226,7 +226,7 @@ export default function Vendors() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div data-tour="vendors-header" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Building2 size={24} className="text-accent-500" /> Vendor Directory
@@ -237,7 +237,7 @@ export default function Vendors() {
           <button onClick={exportCSV} className="btn btn-ghost">
             Export CSV
           </button>
-          <button onClick={() => setShowAdd(true)} className="btn btn-primary">
+          <button data-tour="add-vendor-btn" onClick={() => setShowAdd(true)} className="btn btn-primary">
             <Plus size={16} /> Add Vendor
           </button>
         </div>
@@ -314,7 +314,7 @@ export default function Vendors() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div data-tour="vendor-list" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((v) => (
             <div
               key={v.id}

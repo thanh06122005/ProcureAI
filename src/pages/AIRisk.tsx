@@ -63,7 +63,7 @@ export default function AIRisk() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="ai-risk-header">
         <h1 className="text-2xl font-bold text-white">AI Risk Monitor</h1>
         <p className="text-sm text-slate-400 mt-1">Automated risk detection and vendor intelligence</p>
       </div>
@@ -139,7 +139,7 @@ export default function AIRisk() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div data-tour="ai-risk-list" className="space-y-3">
         {filtered.map((alert) => (
           <div key={alert.id} className={`card p-5 ${alert.resolved ? 'opacity-60' : ''} ${alert.severity === 'critical' ? 'border-red-500/30' : alert.severity === 'high' ? 'border-yellow-500/20' : ''}`}>
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">

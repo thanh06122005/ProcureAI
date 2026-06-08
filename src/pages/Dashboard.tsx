@@ -348,16 +348,16 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
         <span className="text-sm text-slate-500">Last updated: {new Date().toLocaleDateString()}</span>
       </div>
 
-      <div className="kpi-grid-mobile grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="kpi-cards" className="kpi-grid-mobile grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
           <KPICard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} color={kpi.color} />
         ))}
       </div>
 
-      <div className="card p-6">
+      <div data-tour="chart-panel" className="card p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Monthly PO Activity</h2>
-          <div className="flex gap-1.5">
+          <div data-tour="chart-range" className="flex gap-1.5">
             <RangeButton months={3} current={range} onSelect={setRange} />
             <RangeButton months={6} current={range} onSelect={setRange} />
             <RangeButton months={12} current={range} onSelect={setRange} />
@@ -386,7 +386,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (p: Page) => voi
         </button>
       </div>
 
-      <div className="card p-6 overflow-x-auto">
+      <div data-tour="recent-orders" className="card p-6 overflow-x-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Recent Purchase Orders</h2>
           <button onClick={() => onNavigate('purchase-orders')} className="text-sm text-accent-500 hover:text-accent-400 link font-medium">

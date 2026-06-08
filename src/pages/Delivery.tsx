@@ -23,7 +23,7 @@ export default function DeliveryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="delivery-header">
         <h1 className="text-2xl font-bold text-white">Delivery Tracking</h1>
         <p className="text-sm text-slate-400 mt-1">Monitor shipments and delivery status</p>
       </div>
@@ -52,7 +52,7 @@ export default function DeliveryPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div data-tour="delivery-list" className="space-y-4">
         {deliveries.map((d, i) => (
           <div key={i} className="card p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">

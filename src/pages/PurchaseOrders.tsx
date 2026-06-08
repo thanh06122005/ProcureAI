@@ -177,7 +177,7 @@ export default function PurchaseOrders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div data-tour="po-header" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <FileText size={24} className="text-accent-500" /> Purchase Orders
@@ -187,7 +187,7 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Create / Edit Purchase Order Section */}
-      <div ref={formSectionRef} className="card p-6">
+      <div data-tour="create-po-btn" ref={formSectionRef} className="card p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           {editingPO ? (
             <><Edit2 size={18} className="text-accent-500" /> Editing {editingPO.poNumber}</>
@@ -206,8 +206,8 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Purchase Orders List Section */}
-      <div className="card overflow-hidden">
-        <div className="p-4 border-b border-slate-700/40">
+      <div data-tour="po-list" className="card overflow-hidden">
+        <div data-tour="po-status-filter" className="p-4 border-b border-slate-700/40">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <FileText size={18} className="text-accent-500" /> Purchase Orders

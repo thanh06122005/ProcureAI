@@ -47,7 +47,7 @@ export default function Scorecard() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="scorecard-header">
         <h1 className="text-2xl font-bold text-white">Vendor Scorecard</h1>
         <p className="text-sm text-slate-400 mt-1">Performance ratings and quality metrics</p>
       </div>
@@ -95,7 +95,7 @@ export default function Scorecard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div data-tour="scorecard-list" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {combined.map(({ vendor, rating }) => (
           <div key={vendor.id} className="card p-5">
             <div className="flex items-center justify-between mb-4">

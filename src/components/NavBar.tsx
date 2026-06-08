@@ -3,6 +3,7 @@ import { Bell, Truck, Users, FileText, HelpCircle } from 'lucide-react';
 import type { Page } from '../lib/types';
 import { getDeliveries, getVendorRatings, getPurchaseOrders } from '../lib/store';
 import HelpGuide from './HelpGuide';
+import GuidedTour from './GuidedTour';
 
 interface NavBarProps {
   current: Page;
@@ -95,6 +96,7 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [tourRunning, setTourRunning] = useState(false);
   const mobileBellRef = useRef<HTMLDivElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const desktopBellRef = useRef<HTMLDivElement>(null);
@@ -230,6 +232,14 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
         {/* Footer */}
         <div className="px-5 py-4 border-t border-accent-500/10">
           <button
+            onClick={() => setTourRunning(true)}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm mb-1"
+            style={{ minHeight: 44 }}
+          >
+            <span className="text-base">🧭</span>
+            <span>Start Tour</span>
+          </button>
+          <button
             onClick={() => setHelpOpen(true)}
             className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm mb-2"
             style={{ minHeight: 44 }}
@@ -245,6 +255,12 @@ export default function NavBar({ current, onNavigate }: NavBarProps) {
         currentPage={current}
         isOpen={helpOpen}
         onClose={() => setHelpOpen(false)}
+      />
+
+      <GuidedTour
+        currentPage={current}
+        isRunning={tourRunning}
+        onClose={() => setTourRunning(false)}
       />
     </>
   );
